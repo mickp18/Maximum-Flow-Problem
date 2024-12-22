@@ -15,7 +15,7 @@ PROG=$SCRIPT_DIR/MaxFlowSolver
 g++ $MAIN $SOLVER $EDGE  -o $PROG
 
 # Run the program
-$PROG
+$PROG $1
 
 
 # Create graph with Graphviz

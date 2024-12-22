@@ -4,9 +4,14 @@
 using namespace std;
 using namespace chrono;
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    MaxFlowSolver solver = MaxFlowSolver("input2.txt");
+    if (argc < 2) {
+        cout << "Please provide the path to the input file." << endl;
+        return 1;
+    }
+    
+    MaxFlowSolver solver = MaxFlowSolver(argv[1]);
     chrono::high_resolution_clock::time_point t1 = chrono::high_resolution_clock::now();
     //high_resolution_clock::time_point t1 = high_resolution_clock::now();
     solver.solve();
