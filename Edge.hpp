@@ -31,32 +31,41 @@ class Edge {
             // residual edge is created only when a path is found
         }
 
+        // getter of end_node
+        int getEndNode() {
+            return this->end_node;
+        }
+
         void setResidual(Edge *edge_residual) {
             this->residual = edge_residual;
             return;
         }
 
         // check if an edge belongs to the residual network
-        bool is_residual(){
+        bool isResidual() {
             return this->capacity == 0;
         }
 
-        // return remaining capacity in flow network
-        long capacity_available()
-        {
+        // return remaining capacity of edge
+        long getRemainingCapacity() {
             return this->capacity - this->flow;
         }
 
         // add more flow to an edge of an augmented path
-        void augment(long bottleneck)
-        {
+        void augment(long bottleneck) {
             this->flow += bottleneck;
             residual->flow -= bottleneck;
         }
         
         /// Returns a string representation of the edge in the format "node1 - node2, capacity"
-        string to_string()
-        {
-            return std::to_string(this->start_node) + " - " + std::to_string(this->end_node) + ", " + std::to_string(this->capacity);
+        string toString() {
+            return std::to_string(this->start_node) + " -> " + std::to_string(this->end_node) + ", Flow: " + 
+                    std::to_string(this->flow) + ", Cap: "+ std::to_string(this->capacity);
+        }
+
+        string toStringFile() {
+            return std::to_string(this->start_node) + " " + std::to_string(this->end_node) + " " + 
+                    std::to_string(this->flow);
+            
         }
 };

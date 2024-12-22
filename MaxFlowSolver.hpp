@@ -18,17 +18,20 @@ private:
     //  number of nodes
     int n;
 
+    // source = s , sink = t
+    int s, t; 
+
     // file name
     string input_file_path;
 
     // maximum flow value to compute
-    long max_flow;
+    long max_flow=-1;
 
     // graph (adjacency list)
     vector<list<Edge *>> graph;
 
     //
-    int visitFlag = 1;
+    int visit_flag = 1;
     vector<int> visited;
 
     /* Indicates whether the network flow algorithm has ran.
@@ -40,19 +43,27 @@ private:
 
 public:
     // constructor
-    // MaxFlowSolver(string input_file_path, int n) {
     MaxFlowSolver(string input_file_path)
     {
         this->input_file_path = input_file_path;
-        // this->n = n;
         this->max_flow = 0;
         this->solved = false;
-        this->graph = read_graph();
+        this->graph = readGraph();
         this->visited = vector<int>(this->n);
+        
+        // in our implementation, we assume to have a source node and a sink node:
+        // the source node is assumed to have index 0
+        // the sink node is assumed to have index n-1 (with n = # nodes)
+        this->s = 0; 
+        this->t = this->n - 1; 
+    }
+
+    long getMaxFlow() {
+        return this->max_flow;
     }
 
     // read the graph and save it into an adjacency list
-    vector<list<Edge *>> read_graph(){
+    vector<list<Edge *>> readGraph(){
     
         ifstream file(this->input_file_path);
 
@@ -89,23 +100,94 @@ public:
 
 
     // print the graph in format edge - edge, capacity
-    void print_graph() {
+    void printGraph() {
         for (auto node : this->graph) {
             for (auto edge : node) {
-                cout << edge->to_string() << endl;
+                if (!edge->isResidual()) 
+                    cout << edge->toString() << endl;
             }
         }
     }
 
+    // print resulting graph to file
+    void printGraphToFile(string fout) {
+        //string output = "result.txt";
+        ofstream outputFile(fout);
+        
+        if (!outputFile.is_open()) {
+            std::cerr << "Failed to open file: " << fout << std::endl;
+            return;
+        }
+   
+        for (auto node : this->graph) {
+            for (auto edge : node) {
+                if (!edge->isResidual()) 
+                    outputFile << edge->toStringFile() << endl;
+            }
+        }
+        
+        outputFile.close();
+    }
 
-    void setVisited(int i) {
-        this->visited[i] = this->visitFlag;
+
+    /// Prints the residual graph in format "edge - edge, residual_capacity"
+    void printGraphResidual()
+    {
+        for (auto node : this->graph)
+        {
+            for (auto edge : node)
+            {
+                cout << edge->toString() << endl;
+            }
+        }
+    }
+
+    void setVisited(int i)
+    {
+        this->visited[i] = this->visit_flag;
         return;
     }
 
     // Returns whether or not node 'i' has been visited.
-    bool isVisited(int i) {
-        return this->visited[i] == this->visitFlag;
+    bool isVisited(int i)
+    {
+        return this->visited[i] == this->visit_flag;
+    }
+
+    // to see if useful?
+    void markAllNodesAsUnvisited()
+    {
+        visit_flag++;
+    }
+
+    void solve()
+    {
+        // compute max flow
+        for (long f = dfs(this->s, INF); f != 0; f = dfs(this->s, INF))
+        {
+            this->visit_flag++;
+            this->max_flow += f;
+        }
+    }
+
+    long dfs(int node, long flow) {
+        if (node == this->t) {
+            return flow;
+        }
+
+        this->visited[node] = visit_flag;
+
+        list<Edge *> node_edges = this->graph[node];
+        for (Edge *edge : node_edges) {
+            if (edge->getRemainingCapacity() > 0 && this->visited[edge->getEndNode()] != visit_flag) {
+                long bottleNeck = dfs(edge->getEndNode(), min(flow, edge->getRemainingCapacity()));
+                if (bottleNeck > 0) {
+                    edge->augment(bottleNeck); 
+                    return bottleNeck;
+                }
+            }
+        }
+        return 0;
     }
 
 };
