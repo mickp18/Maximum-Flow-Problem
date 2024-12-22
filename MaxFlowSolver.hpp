@@ -131,40 +131,32 @@ public:
 
 
     /// Prints the residual graph in format "edge - edge, residual_capacity"
-    void printGraphResidual()
-    {
-        for (auto node : this->graph)
-        {
-            for (auto edge : node)
-            {
+    void printGraphResidual() {
+        for (auto node : this->graph){
+            for (auto edge : node){
                 cout << edge->toString() << endl;
             }
         }
     }
 
-    void setVisited(int i)
-    {
+    void setVisited(int i){
         this->visited[i] = this->visit_flag;
         return;
     }
 
     // Returns whether or not node 'i' has been visited.
-    bool isVisited(int i)
-    {
+    bool isVisited(int i){
         return this->visited[i] == this->visit_flag;
     }
 
     // to see if useful?
-    void markAllNodesAsUnvisited()
-    {
+    void markAllNodesAsUnvisited(){
         visit_flag++;
     }
 
-    void solve()
-    {
+    void solve(){
         // compute max flow
-        for (long f = dfs(this->s, INF); f != 0; f = dfs(this->s, INF))
-        {
+        for (long f = dfs(this->s, INF); f != 0; f = dfs(this->s, INF)){
             this->visit_flag++;
             this->max_flow += f;
         }
@@ -189,5 +181,7 @@ public:
         }
         return 0;
     }
+ 
+    long bfs(){return 0.00;}
 
 };
