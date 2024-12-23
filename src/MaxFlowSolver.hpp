@@ -57,7 +57,8 @@ public:
         // this->s = 0; 
         // this->t = this->n - 1; 
         this->s = 0; 
-        this->t = 499; 
+        this->t = this->n -1; 
+       // cout << "Source: " << this->s << ", Sink: " << this->t << endl;
     }
 
     long getMaxFlow() {

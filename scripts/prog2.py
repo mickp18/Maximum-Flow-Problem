@@ -1,5 +1,5 @@
-fin = open("inputs/airports.txt", "r")
-fout = open("inputs/airports_500_dag.txt", "w")
+fin = open("inputs/airports_1500.txt", "r")
+fout = open("inputs/airports_1500_dag.txt", "w")
 # n1 n2
 # 1 47 esistente
 # 47 1 eliminare
@@ -8,6 +8,7 @@ fout = open("inputs/airports_500_dag.txt", "w")
     3 : [4, 2, 467]}
 '''
 d = dict()
+fout.write("            \n")
 for line in fin:
     val = line.strip().split()
     # check if key in dictionary and if val in list of key 
@@ -17,6 +18,11 @@ for line in fin:
             d[val[0]] = []
         d[val[0]].append(val[1])
 
+fout.close()
+fout  = open("inputs/airports_1500_dag.txt", "r+")
+fout.write(f"{len(d)}")
+
+fout.flush()
 
 fin.close()
 fout.close()

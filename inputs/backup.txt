@@ -1,4 +1,20 @@
+airports_500.txt:
 dl
 N=500
+format=edgelist1
+data:
+
+airports_1500.txt:
+dl
+N=1858
+format=edgelist1
+data:
+
+airport_code for 2nd file with ~1500 airports
+
+
+airports_8000.txt:
+dl
+N=7976
 format=edgelist1
 data:
