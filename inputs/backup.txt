@@ -1,0 +1,4 @@
+dl
+N=500
+format=edgelist1
+data:
