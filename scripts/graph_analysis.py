@@ -30,7 +30,7 @@ def remove_cycles(G):
     return G
 
 def main():
-    fout = open("inputs/airport_1500_dag.txt", "w")
+    fout = open("inputs/airport_1500_dag_v2.txt", "w")
  #   fout = open("dag_edges_out.txt", "w")
     # G = graph_from_file("inputs/dag_edges.txt")
     G = graph_from_file("inputs/airports_1500_directed.txt")
@@ -106,7 +106,7 @@ def draw(G):
 
     A = to_agraph(G)
     A.layout('dot')  # Hierarchical layout
-    A.draw("flow_graph_dot_layout.png")
+    A.draw("outputs/flow_graph_dot_layout.png")
     
 main()
 
