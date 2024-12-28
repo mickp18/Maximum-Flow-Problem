@@ -12,14 +12,25 @@ run the command in this [link](https://stackoverflow.com/a/29747593)
 
 (Do the following from VS code running in WSL)
 To install graphviz you need to run the following commands:
-`sudo apt install grapviz`
+```bash
+sudo apt install grapviz
+```
 In case of error related to the library `graphviz/gvc.h`, run the following commands:
-`sudo apt-get update`
-`sudo apt-get install graphviz-dev`
+```bash
+sudo apt-get update
+```
+```bash
+sudo apt-get install graphviz-dev
+```
 
 TO install the Python library
 - networkx:
-`python3 -m pip install -U networkx`
+```bash
+python3 -m pip install -U networkx
+```
 - matplotlib:
 <!-- `python3 -m pip install -U pip` -->
-`python3 -m pip install -U matplotlib`
+
+```bash
+python3 -m pip install -U matplotlib
+```
