@@ -194,8 +194,11 @@ public:
                     }));
             }
         }
+
         for (auto& future : futures){
             long bottleneck = future.get();
+            cout << "bottleneck: " << bottleneck << endl;
+            cout << "Thread " << std::this_thread::get_id() << " acquiring lock" << endl;
             std::lock_guard<std::mutex> lock(graph_lock); // Ensure thread-safe augmentation
                 for (Edge* edge : node_edges) {
                     if (edge->getEndNode() == t) {
@@ -203,7 +206,11 @@ public:
                         return bottleneck;
                     }
                 }
+            if (graph_lock.try_lock()) {
+                cout << "lock free" << endl;
+            }
         }
+        
         return 0;
     }
  
