@@ -21,16 +21,16 @@ def generate_dag(file_name, num_nodes, num_edges):
     
     # Create a list of all possible edges (u, v) where u < v to avoid cycles
     possible_edges = [(u, v) for u in range(num_nodes) for v in range(u + 1, num_nodes)]
-    print("possible edges")
-    print(possible_edges)
+    # print("possible edges")
+    # print(possible_edges)
     # Randomly select the desired number of edges
     edges = random.sample(possible_edges, num_edges)
-    print("edges")
-    print(edges)
+    # print("edges")
+    # print(edges)
     # Assign random capacities to edges between a minimum and max capacity
     edges_with_capacity = [(u, v, random.randint(MIN_CAP, MAX_CAP)) for u, v in edges]
-    print("edges with capacities")
-    print(edges_with_capacity)
+    # print("edges with capacities")
+    # print(edges_with_capacity)
     
     # Add edges from source (0) and to sink (num_nodes-1) if needed
     source = 0
@@ -54,9 +54,13 @@ def generate_dag(file_name, num_nodes, num_edges):
     #     G = nx.DiGraph()
     #     G.add_weighted_edges_from(edges_with_capacity)
 
-    # if not nx.is_directed_acyclic_graph(G):
-    #     raise RuntimeError("Failed to generate a valid DAG. Try different parameters.")
+    if not nx.is_directed_acyclic_graph(G):
+        raise RuntimeError("Failed to generate a valid DAG. Try different parameters.")
 
+    # check if there is a path between source and sink
+    if not nx.has_path(G, source, sink):
+        raise RuntimeError("Failed to generate a valid DAG. Try different parameters.")
+   
     # Write the edges to the file
     with open(file_name, "w") as f:
         f.write(f"{num_nodes}\n")
@@ -66,8 +70,8 @@ def generate_dag(file_name, num_nodes, num_edges):
     print(f"DAG with {num_nodes} nodes and {len(edges_with_capacity)} edges saved to '{file_name}'.")
     print(f"Is DAG: {nx.is_directed_acyclic_graph(G)}")
 
-# Example usage
+
 if __name__ == "__main__":
-    num_nodes = 2000  # Adjust number of nodes
-    num_edges = 2500  # Adjust number of edges
+    num_nodes = 7000  
+    num_edges = 20000
     generate_dag(output_file, num_nodes, num_edges)
