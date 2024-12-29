@@ -1,4 +1,4 @@
-#include "MaxFlowSolver.hpp"
+#include "MaxFlowSolverParallel.hpp"
 #include <chrono>
 
 using namespace std;
@@ -7,6 +7,9 @@ using namespace chrono;
 // prog_name inputFileName outputFileName
 int main(int argc, char *argv[])
 {
+    ofstream fout;
+    fout.open("../outputs/par_result.txt", ios_base::out | ios_base::app);
+
     if (argc < 3) {
         cout << "Please provide the path to the input file and the output file." << endl;
         return 1;
@@ -22,6 +25,8 @@ int main(int argc, char *argv[])
 
     cout << "Max flow: " << solver.getMaxFlow() << endl;
     cout << "found in: " <<  duration.count() << "ns" << endl;
+    fout << "found in: " <<  duration.count() << "ns" << endl;
+
     solver.printGraphToFile(argv[2]);
     
     return 0;
