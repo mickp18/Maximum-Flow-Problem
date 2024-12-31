@@ -1,0 +1,7 @@
+found in: 675ns
+found in: 661ns
+found in: 740ns
+found in: 508ns
+found in: 652ns
+found in: 763ns
+found in: 1778ns

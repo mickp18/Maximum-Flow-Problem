@@ -31,6 +31,11 @@ class Edge {
             // residual edge is created only when a path is found
         }
 
+        // getter of start_node
+        int getStartNode() {
+            return this->start_node;
+        }
+
         // getter of end_node
         int getEndNode() {
             return this->end_node;
@@ -44,6 +49,16 @@ class Edge {
         // check if an edge belongs to the residual network
         bool isResidual() {
             return this->capacity == 0;
+        }
+
+        // getter of capacity
+        long getCapacity() {
+            return this->capacity;
+        }
+        
+        // getter of flow
+        long getFlow() {
+            return this->flow;
         }
 
         // return remaining capacity of edge
