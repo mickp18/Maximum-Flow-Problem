@@ -14,7 +14,42 @@
 #include "Node.hpp"
 
 using namespace std;
+/*   
+     #
+    ##
+   ###
+  ####
+ ## ##
+    ##
+    ##
+    ##
+    ##    
+    ##
+ #######
 
+    ####       ################          ####              ##
+  ##    ##     ##            ##        ##    ##           ###
+ ##      ##    ##            ##       ##      ##         ####
+         ##    ##   #     #  ##              ##         ## ##
+        ##     ##            ##             ##         ##  ##
+       ##      ##  ##    ##  ##           ##          ##   ##
+      ##       ##    ####    ##          ##          ###   ##
+     ##        ##            ##        ##           ############
+    ##         ##            ##      ##                    ##
+   ##          ##            ##     ##                     ##
+ ###########   ################     ############           ##
+       ## 
+      ###
+     ####
+    ## ##
+   ##  ##
+  ##   ##
+ ###########
+       ##
+       ##
+Happy New Year 2025!
+da MGM
+ */
 class MaxFlowSolver
 {
 private:
@@ -333,3 +368,37 @@ public:
     long bfs(){return 0.00;}
 
 };
+
+/*
+thread(u,v)
+	
+	while (!sink_labeled){
+		// put label
+        if case 1
+		else case 2
+		
+		if (nodes[t].isLabeled())
+			// block all threads
+			augment()
+			// update flow
+			// signal all
+			update done
+			return
+		
+		else 
+			for (edges of v)
+				thread(u1, v1)
+			
+			wait threads.join
+		}
+		
+    }
+       
+         > 2
+       /
+      0       - o labeled, unscanned -> thread (0,1) puts 0 as scanned and puts label on 1
+              - 0 labeled, scanned -> thread (2,0') -> ?
+        \> 1
+
+
+*/
