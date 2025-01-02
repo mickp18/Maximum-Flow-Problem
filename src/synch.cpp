@@ -130,9 +130,28 @@ T1                  cv=False                   T2
 
 
 // BEGIN
-atomic<bool> done
+atomic<bool> done = false;
+atomic<bool> sink_reached = false;  // use .load(), .store() to read, to write
+atomic<int> num_generated;  // # of generatedthreads
+atomic<int> num_blocked;    // # of threads blocked on cv next_iteration
+// ... define mutexes for the ints and for the atomic bools!
 
+
+// in main:
+num_generated = 0;
+num_blocked = 0;
+
+
+// func executed by every thread
 while (!done) {
+    check if sink_reached
+        if yes ->
+            num_blocked+=1
+            wait on CV of next_iteration
+            if (done):
+                return;
+        if no -> continue
+    
     check if start node U has label
         if yes -> continue
         if no  -> wait for some other thread to set the label on the start node -> CV
@@ -141,27 +160,32 @@ while (!done) {
         if no  -> try to lock it
             if lock successful:
                 check flow (U,V)< capacity (U,V)  || check reverse_flow i.e. flow(V,U) > 0
+                
                 compute label accordingly
                 assign label to node
+
                 unlock mutex
-                signal conditional variable
+                signal conditional variable of end_node
             else remain blocked on the mutex till it gets unlocked
     check if end node is sink
         if yes ->
+            sink_reached = True
+            while ((num_generated-1) != num_blocked) {};
             if augment():
-                reset labels
+                reset_labels()
             else:
                 done = true // no more
             next_iteration.notify_all() wake all threads (to restart)                    
         if no  -> 
-            for edge (u,v) in edges(end_node, neighbours(u())
-                if v is labeled
-                    continue
-                if v is not labeled
-                    generate threads for (u,v)
+                // for edge (u,v) in edges(end_node, neighbours(end_node))
+                //     if there does not exist a thread for (u,v) and v has no labe;
+                //        num_generated +=1;
+                //         generate thread for (u,v)
+
+            num_blocked+=1
             wait on CV of next_iteration
 }
-return
+return;
 
 
 
@@ -170,10 +194,7 @@ return
 
 
 
-
-
-
-
+// other helpful comments 
     mutex m
     conditional_variable cv
 
@@ -189,22 +210,15 @@ return
 
 /***
 // GENERIC ALGORITHM
-generate array of thread ids, with len = 2*num of edges
-label source node
-for every neighbour of source:
-    generate a thread
-    add the thread id to the array of thread ids
-    pass the func f to each thread
-wait for a flow to be returned (>=0)
-when a flow val is returned, remove all labels except label of source node
-if flow>0, restart from the for loop
-else, return max flow
+solve() {
 
+    label source node
+    for every neighbour of source:
+        generate a thread and pass the func f to each thread
+    wait till all threads finish
+    return max flow....
+}
 
 func f (start_node, end_node)
-
-if start node is labeled and flow < capacity
-    if end node is not labeled
-        compute label of end node
-        wx label of end node
+// see code above
 */

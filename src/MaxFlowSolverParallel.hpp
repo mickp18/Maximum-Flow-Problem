@@ -8,7 +8,10 @@
 #include <fstream>
 #include <future>
 #include <mutex>
+#include <condition_variable>
+#include <condition_variable>
 #include <thread>
+#include <atomic>
 
 #include "Edge.hpp"
 #include "Node.hpp"
@@ -79,6 +82,17 @@ private:
     const long INF = __LONG_LONG_MAX__ / 2;
     std::mutex graph_lock;
 
+    atomic<bool> done;  // flag to indicate if there is no more augmenting flow left
+    atomic<bool> sink_reached;  // flag to indicate if the sink node is labelled
+    atomic<int> num_generated;  // # of generated threads
+    atomic<int> num_blocked;    // # of threads blocked on cv next_iteration
+    mutex mx_done, mx_sink_reached, mx_num_genereated, mx_num_blocked;
+    condition_variable cv;
+    mutex mx_cv; 
+
+    // create a vector of threads
+    vector<thread> threads;
+
 public:
     // constructor
     MaxFlowSolver(string input_file_path)
@@ -98,6 +112,10 @@ public:
         this->s = 0; 
         this->t = this->n -1; 
        // cout << "Source: " << this->s << ", Sink: " << this->t << endl;
+        this->done.store(false);
+        this->sink_reached.store(false);
+        this->num_generated.store(0);
+        this->num_blocked.store(0);
     }
 
     long getMaxFlow() {
@@ -202,229 +220,184 @@ public:
         visit_flag++;
     }
 
+    /*
+        label source node
+    for every neighbour of source:
+        generate a thread and pass the func f to each thread
+    wait till all threads finish
+    return max flow....
+    */
     void solve(){
-        int t_limit = thread::hardware_concurrency();
-        // compute max flow:
         // set label of source node
-        // for every edge in the graph, generate a thread with a task to set a label to the ending node of the edge to which the thread was assigned
-        // once all threads are generated (one thread per edge), run all threads and let them run till when a label on the sink node is set
-        // when a label on the sink is set, stop the remaining threads and augment the flow along the discovered path
-        // reset all labels of all nodes (but keep the flow assigned so far)
-        // repeat all steps till the flow value becomes 0, i.e. till when the augmenting value is 0
-     
         this->nodes[s].setSourceLabel();
-        for (long f = parallelDfs(this->s, INF, t_limit); f != 0; f = parallelDfs(this->s, INF, t_limit)){
-            // this->visit_flag++;
-            // augment
-            this->max_flow += f;
-            // reset source
-            // cout << f << endl;
-            this->nodes[s].setSourceLabel();
-            cout << this->max_flow << endl;
-               
-            
-        }
-    }
 
-    long parallelDfs(int node, long flow, int thread_limit) {
-        cout << "thread: " << std::this_thread::get_id()<< " " << node << " " << flow << endl;
-       
-        if (node == this->t) {
-            cout << "Thread " <<  std::this_thread::get_id() << " reaches sink" << endl;
-            return flow;
-        }
 
-        this->visited[node] = visit_flag;
-        std::vector<std::future<long>> futures;
-        long flow;
 
-        list<Edge *> node_edges = this->graph[node];
-        for (Edge *edge : node_edges)
-        {
-            // create thread for each edge
-            //   async(std::launch::async, [=]();
-
-        }
-        // wait for all threads to finish
-
-        // return nex flow
-        // return flow;
-
-        /*
-        //     if (edge->getRemainingCapacity() > 0 && this->visited[edge->getEndNode()] != visit_flag)
-        //     {
-        //         // Launch DFS recursively in parallel
-        //         futures.push_back(async(std::launch::async, [=]()
-        //                                 { return parallelDfs(edge->getEndNode(), std::min(flow, edge->getRemainingCapacity()), thread_limit); }));
-
-        //         // Wait for the future to become ready, but don't block
-        //         auto status = futures.back().wait_for(std::chrono::milliseconds(0));
-        //         while (status != std::future_status::ready)
-        //         {
-        //             // Future is ready, get the result
-        //             long bottleneck = futures.back().get();
-        //             if (bottleneck > 0)
-        //             {
-        //                 edge->augment(bottleneck);
-        //                 cout << "edge of " << node << " -> " << edge->getEndNode() << " augmented with flow " << bottleneck << " by thread " << std::this_thread::get_id() << endl;
-        //                 return bottleneck;
-        //             }
-        //         }
-        //     }
-        // }
-
-        // for (auto& future : futures){  // futures = [thread(1,3)->1, thread(2,3)->1]
-        //     long bottleneck = future.get();
-        //     cout << "Thread " << std::this_thread::get_id() << " acquiring lock and got bottleneck: " << bottleneck << endl;
-        //     std::lock_guard<std::mutex> lock(graph_lock); // Ensure thread-safe augmentation
-        //         for (Edge* edge : node_edges) { // 0,1 , 0,2
-        //             if (visited[node] == visit_flag) {
-        //                 edge->augment(bottleneck);
-        //                 cout << "edge of " << node << " -> " << edge->getEndNode() << " augmented with flow " << bottleneck << " by thread " << std::this_thread::get_id() << endl;
-        //                 return bottleneck;
-        //             }
-        //         }
+        // save edges of source node
+        list<Edge *> source_edges = this->graph[s];
         
-        cout << "thread " << std::this_thread::get_id() << " finished with bottleneck 0" << endl;
-        return 0;
-        */
+        //for every neighbour of source:
+        //   generate a thread and pass the func thread_function to each thread
+        for (auto edge : source_edges) { 
+            int u = edge->getStartNode();
+            int v = edge->getEndNode();
+            //list<Edge *> neighbour_edges = this->graph[v];
+
+            this->threads.push_back(thread(thread_function, u, v, edge));  
+            edge->setHasThread();          
+        }
+
+        // wait till all threads finish
+        for (auto &thread : this->threads){
+            thread.join();
+        }
+
+        // return max flow....
     }
+
  
-    long thread(int u, int v, Edge *edge){
-        // if u is labeled and unscanned, v is unlabeled and f(u, v) < c(u, v)
-        if (nodes[u].isLabeled() && !visited[u] && !nodes[v].isLabeled()){
-            if (edge->getRemainingCapacity() > 0){
-            // assign the label (u, +, l(v)) to node v, Where l(v) = min(l(u), c(u, v) − f(u, v)). 
-                long pred_flow = nodes[u].getLabel()->flow;
-                long remaining_capacity = edge->getRemainingCapacity();
+    void thread_function(int u, int v, Edge *edge){
+        
+        list<Edge *> neighbour_edges = this->graph[v];
+        
+        // thread operations...
+        while (!this->done.load()){     // ?? need to lock the mutex of done ?? No -> https://chatgpt.com/share/6776c875-9cf0-8004-90ae-f5cdfbce30b4
+           
+            // this->mx_sink_reached.lock();    // to check without mutex?
+            if (this->sink_reached.load()){
+                // this->mx_num_blocked
+                this->num_blocked.fetch_add(1); // Atomically increments 'num_blocked' by 1
+                //..
+                unique_lock<mutex> lock(this->mx_cv);
+                this->cv.wait(lock, [this] {return (this->num_generated.load()-1) != this->num_blocked.load();} );
+                if (this->done.load()) {
+                    return;
+                }
+            }
+        }
+
+        bool u_is_labeled = this->nodes[u].isLabeled();
+        if (!u_is_labeled) {
+            this->nodes[u].waitOnNodeCV();
+        }
+
+        bool v_is_labeled = this->nodes[v].isLabeled();
+        if (v_is_labeled) {
+            // return;
+            // spawn threads starting from the end node
+        }
+
+        long pred_flow = this->nodes[u].getLabel()->flow;
+        // EDGE (U,V)
+        // if u is labeled and unscanned, v is unlabeled and f(u, v) < c(u, v) ( equiv. to c(u,v) - f(u,v) > 0)
+        if (u_is_labeled && !v_is_labeled) {
+            this->nodes[v].lockSharedMutex();
+            long remaining_capacity = edge->getRemainingCapacity();
+            if (remaining_capacity > 0){
+                // assign the label (u, +, l(v)) to node v, Where l(v) = min(l(u), c(u, v) − f(u, v)). 
                 long label_flow = std::min(pred_flow, remaining_capacity);
-                nodes[v].setLabel(u, '+', label_flow);
+                this->nodes[v].setLabel(u, '+', label_flow);
                 
             // Let u be labeled and scanned and v is labeled and un-scanned
-                visited[u] = visit_flag;
             }
-
+            this->nodes[v].signalNodeCV();
+            this->nodes[v].unlockSharedMutex();
         }
-        // v is labeled and un-scanned, u is unlabeled and f(u, v) > 0.
-        else if (nodes[v].isLabeled() && !visited[v] && !nodes[u].isLabeled() ){
-            if (edge->getFlow() > 0) {
+        // EDGE (V, U)
+        // else if v is labeled and un-scanned, u is unlabeled and f(u, v) > 0.
+        else if (v_is_labeled && !u_is_labeled) {
+            this->nodes[u].lockSharedMutex();
+            long edge_flow = edge->getFlow();
+            if (edge_flow > 0) {
             // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
-                long pred_flow = nodes[v].getLabel()->flow;
-                long edge_flow = edge->getFlow();
-                long label_flow = std::min(pred_flow, edge_flow);
-                nodes[u].setLabel(v, '-', label_flow);
+                long label_flow = std::min(pred_flow, edge_flow);            
+                this->nodes[u].setLabel(v, '-', label_flow);
 
             //Let v be labeled and scanned and u is labeled and un-scanned
-                visited[v] = visit_flag;
             }
+            this->nodes[u].signalNodeCV();
+            this->nodes[u].unlockSharedMutex();
+        } else if (u_is_labeled && v_is_labeled) {
+            list<Edge *> neighbour_edges = this->graph[v];
+            for (auto next_edge : neighbour_edges) {
+                if (!(this->nodes[next_edge->getEndNode()].isLabeled()) && !next_edge->getHasThread()) {
+                    this->threads.push_back(thread(thread_function, next_edge->getStartNode(), next_edge->getEndNode(), next_edge));
+                    next_edge->setHasThread();   
+                    this->num_generated.fetch_add(1);
+                }
+            }
+
+            this->num_blocked.fetch_add(1); // Atomically increments 'num_blocked' by 1
+            unique_lock<mutex> lock(this->mx_cv);
+            this->cv.wait(lock, [this] {return (this->num_generated.load()-1) != this->num_blocked.load();} );
         }
 
+        /*
+        check if end node is sink
+        if yes ->
+            sink_reached = True
+            while ((num_generated-1) != num_blocked) {};
+            if augment():
+                reset_labels()
+            else:
+                done = true // no more
+            next_iteration.notify_all() wake all threads (to restart)  
+        */
         // If the sink node t is labeled then go to step 3, else return to step 2.
-        if (nodes[t].isLabeled()){
+        if (nodes[t].isLabeled()) {
             // augment path
-            // Step 3. let x = t, then do the following work until x = s.
-            // • If the label of x is (y, +, l(x)), then let f(y, x) = f(y, x) + l(t)
-            // • If the label of x is (y, −, l(x)), then let f(x, y) = f(x, y) − l(t)
-            // • Let x = y
-            int x = t;
-            int y = nodes[x].getLabel()->pred_id;
-            Edge *e;
-            long sink_flow = nodes[x].getLabel()->flow;
-
-            while (x != s){
-                for (Edge *edge : this->graph[y]){
-                    if (edge->getEndNode() == x)
-                        e = edge;
-                }
-                
-                if (nodes[x].getLabel()->sign == '+'){
-                    edge->augment(sink_flow);
-                }
-                else{
-                    edge->augment(-sink_flow);
-                }
-            
-                x = y;
-                y = nodes[x].getLabel()->pred_id;
-            }
-            // Then go to step 1.
-            return sink_flow;
+            // if (){
+            //     continue
+            // }
+            // update max flow
         } else {
             // get next edges
             list<Edge *> node_edges = this->graph[v];
 
-            for (Edge *edge : node_edges)
-            {
-                // create thread for each edge
-                // ... TODO
-                // async(std::launch::async, [=]()
-    
-            }   
+        for (Edge *edge : node_edges)
+        {
+            // create thread for each edge
+            // ... TODO
+            // async(std::launch::async, [=]()
+
+        }   
             
         }
     }
+
+    long augment(int t){
+  
+        // Step 3. let x = t, then do the following work until x = s.
+        // • If the label of x is (y, +, l(x)), then let f(y, x) = f(y, x) + l(t)
+        // • If the label of x is (y, −, l(x)), then let f(x, y) = f(x, y) − l(t)
+        // • Let x = y
+        int x = t;
+        int y = nodes[x].getLabel()->pred_id;
+        Edge *e;
+        long sink_flow = nodes[x].getLabel()->flow;
+
+        while (x != s){
+            for (Edge *edge : this->graph[y]){
+                if (edge->getEndNode() == x) {
+                    e = edge;
+                    break;
+                }
+            }
+
+            if (nodes[x].getLabel()->sign == '+'){
+                e->augment(sink_flow);
+            }
+            else{
+                e->augment(-sink_flow);
+            }
+        
+            x = y;
+            y = nodes[x].getLabel()->pred_id;
+        }
+        // Then go to step 1.
+        return sink_flow;
+    }
     
-    
-    long bfs(){return 0.00;}
+    // long bfs(){return 0.00;}
 
 };
-
-/*
-thread(u,v)
-	
-	while (!sink_labeled){
-		// put label
-        if case 1
-		else case 2
-		
-		if (nodes[t].isLabeled())
-			// block all threads
-			augment()
-			// update flow
-			// signal all
-			update done
-			return
-		
-		else 
-			for (edges of v)
-				thread(u1, v1)
-			
-			wait threads.join
-		}
-		
-    }
-       
-         > 2
-       /
-      0       - o labeled, unscanned -> thread (0,1) puts 0 as scanned and puts label on 1
-              - 0 labeled, scanned -> thread (2,0') -> ?
-        \> 1
-
-
-*/
-
-
-/***
-generate array of thread ids, with len = 2*num of edges
-label source node
-for every neighbour of source:
-    generate a thread
-    add the thread id to the array of thread ids
-    pass the func f to each thread
-wait for a flow to be returned (>=0)
-when a flow val is returned, remove all labels except label of source node
-if flow>0, restart from the for loop
-else, return max flow
-
-
-func f (start_node, end_node)
-
-if start node is labeled and flow < capacity
-    if end node is not labeled
-        compute label of end node
-        wx label of end node
-
-
-
-
-*/

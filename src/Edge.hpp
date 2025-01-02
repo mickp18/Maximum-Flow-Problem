@@ -1,5 +1,6 @@
 // Header file that contains class Edge
 #include <string>
+#include <atomic>
 
 using namespace std;
 
@@ -20,6 +21,9 @@ class Edge {
         // residual edge
         Edge *residual;
 
+        // flag to check if there is already a thread generated for the edge
+        atomic<bool> hasThread;
+
     public:
         // constructor
         Edge(int start_node, int end_node, long capacity)
@@ -29,6 +33,7 @@ class Edge {
             this->capacity = capacity;
             this->flow = 0;
             // residual edge is created only when a path is found
+            this->hasThread.store(false);
         }
 
         // getter of start_node
@@ -82,5 +87,13 @@ class Edge {
             return std::to_string(this->start_node) + " " + std::to_string(this->end_node) + " " + 
                     std::to_string(this->flow);
             
+        }
+
+        bool getHasThread() {
+            return this->hasThread.load();
+        }
+
+        void setHasThread() {
+            this->hasThread.store(true);
         }
 };
