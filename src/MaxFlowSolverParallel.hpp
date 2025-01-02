@@ -402,3 +402,29 @@ thread(u,v)
 
 
 */
+
+
+/***
+generate array of thread ids, with len = 2*num of edges
+label source node
+for every neighbour of source:
+    generate a thread
+    add the thread id to the array of thread ids
+    pass the func f to each thread
+wait for a flow to be returned (>=0)
+when a flow val is returned, remove all labels except label of source node
+if flow>0, restart from the for loop
+else, return max flow
+
+
+func f (start_node, end_node)
+
+if start node is labeled and flow < capacity
+    if end node is not labeled
+        compute label of end node
+        wx label of end node
+
+
+
+
+*/
