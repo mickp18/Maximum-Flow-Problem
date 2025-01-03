@@ -25,6 +25,8 @@ class Node {
         const long INF = __LONG_LONG_MAX__ / 2;
 
     public:
+
+
         /**
          * Node constructor
          * @param id the id of the node
@@ -35,6 +37,14 @@ class Node {
             this->id = id;
             this->label = nullptr;
             this->labeled.store(false);
+        }
+
+        /**
+         * Retrieves the id of the node.
+         * @return the id of the node
+         */
+        int getId() {
+            return this->id;
         }
 
         /**
@@ -52,11 +62,15 @@ class Node {
             this->label->flow = labelflow;
         }
 
-        // void trySetLabel(int pred_id, char sign, long labelflow) {
-        //     unique_lock<mutex> lck(mx);
-        //     this->cv.wait(lck, [this] {}) 
-        // }
-
+        /**
+         * Resets the label of this node.
+         * 
+         * Sets labeled to false and the label to an empty struct.
+         */
+        void resetLabel() {
+            this->labeled.store(false);
+            this->label = {};
+        }
 
         /**
          * Sets the label of this node as source node.
@@ -65,7 +79,7 @@ class Node {
         void setSourceLabel() {
             this->labeled.store(true);
             this->label->pred_id = -1;
-            this->label->sign = NULL;
+            this->label->sign = '\0';
             this->label->flow = INF;
         }
 
@@ -74,6 +88,15 @@ class Node {
          */
         bool isSource() {
             return this->label->pred_id == -1;
+        }
+
+        /**
+         * Checks if this node is a sink node (i.e., its id is equal to t).
+         * @param t the id of the sink node
+         * @return true if this node is a sink node, false otherwise
+         */
+        bool isSink(int t) {
+            return this->id == t;
         }
         
         /**
