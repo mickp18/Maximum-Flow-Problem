@@ -2,8 +2,11 @@
 #include <shared_mutex>
 #include <condition_variable>
 #include <atomic>
+#include <iostream>
 
 using namespace std;
+
+const long INF = __LONG_LONG_MAX__ / 2;
 
 // a struct containing all fields of the label of each node
 typedef struct  {
@@ -17,16 +20,13 @@ class Node {
         int id;
         label_t *label;
         atomic<bool> labeled;
-        
+      
         shared_mutex mx_node;
         mutex mx_cv;       // to read/write label of node
         condition_variable cv;      // used to signal when the label of a node is set
 
-        const long INF = __LONG_LONG_MAX__ / 2;
 
     public:
-
-
         /**
          * Node constructor
          * @param id the id of the node
@@ -35,7 +35,7 @@ class Node {
          */
         Node(int id) {
             this->id = id;
-            this->label = nullptr;
+            this->label = new label_t;
             this->labeled.store(false);
         }
 
@@ -69,7 +69,13 @@ class Node {
          */
         void resetLabel() {
             this->labeled.store(false);
-            this->label = {};
+            delete this->label;
+            this->label = new label_t;
+        }
+
+        void freeLabel(){
+            delete this->label;
+            // delete this;
         }
 
         /**

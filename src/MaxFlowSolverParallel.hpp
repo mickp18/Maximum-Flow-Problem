@@ -9,7 +9,6 @@
 #include <future>
 #include <mutex>
 #include <condition_variable>
-#include <condition_variable>
 #include <thread>
 #include <atomic>
 
@@ -101,15 +100,12 @@ public:
         this->input_file_path = input_file_path;
         this->max_flow = 0;
         this->solved = false;
-        this->nodes = vector<Node *> (this->n);
         this->graph = readGraph();
         this->visited = vector<int> (this->n);
         
         // in our implementation, we assume to have a source node and a sink node:
         // the source node is assumed to have index 0
         // the sink node is assumed to have index n-1 (with n = # nodes)
-        // this->s = 0; 
-        // this->t = this->n - 1; 
         this->s = 0; 
         this->t = this->n -1; 
        // cout << "Source: " << this->s << ", Sink: " << this->t << endl;
@@ -140,6 +136,10 @@ public:
         cout << "Number of nodes: " << this->n << endl;
 
         vector<list<Edge *>> graph(this->n);
+
+        this->nodes = vector<Node *>(this->n);
+        // cout << "nodes size: " << nodes.size() << endl;
+
         int i = 0;
         while (getline(file, line)) {
             i++;
@@ -154,24 +154,32 @@ public:
             edge->setResidual(edge_residual); // set the residual edge 
             edge_residual->setResidual(edge); // set the foward edge as "residual" of the residual edge
             
-            // cout << "adding line " << i <<  ": " << line << endl;
-           // cout << "adding to Node " << start_node << endl;
+            cout << "adding line " << i <<  ": " << line << endl;
+            cout << "adding to Node " << start_node << endl;
             graph[start_node].push_back(edge);
             graph[end_node].push_back(edge_residual);
             
+            // cout << "before start node" << endl;
+            // cout << "this->nodes[start_node]: " << this->nodes[start_node] << endl;
             if (this->nodes[start_node] == nullptr) {
                 Node *node1 = new Node(start_node);
                 this->nodes[start_node] = node1;
             }
+            // cout << "after start node" << endl;
+            // cout << "before end node" << endl;
 
             if (this->nodes[end_node] == nullptr) {
                 Node *node2 = new Node(end_node);
                 this->nodes[end_node] = node2;
             }            
+            // cout << "after end node" << endl;
         }
-        cout << "Graph read" << endl;
-        for (Node* n : this->nodes)
-            cout << n->getId() << endl;
+        cout << "hey" << endl;
+        cout << "Graph read with nodes: " << endl;
+        for (Node* nd : this->nodes) {
+            cout << nd->getId() << " ";
+        }
+        cout << endl;
         return graph;
     }
 
@@ -240,46 +248,41 @@ public:
     */
     void solve(){
         // set label of source node
-        this->nodes[s]->setSourceLabel();
+        this->nodes[this->s]->setSourceLabel();
 
         // save edges of source node
-        list<Edge *> source_edges = this->graph[s];
+        list<Edge *> source_edges = this->graph[this->s];
+        int num_source_edges = source_edges.size();
         
         //for every neighbour of source:
         //   generate a thread and pass the func thread_function to each thread
         for (auto edge : source_edges) { 
             int u = edge->getStartNode();
             int v = edge->getEndNode();
-// ORIGINAL CODE
-            // this->threads.push_back(thread(&MaxFlowSolverParallel::thread_function, ref(u), ref(v), std::ref(edge)));  
-            // edge->setHasThread();          
-
-// TEST CODE
-            //thread t(&MaxFlowSolverParallel::hey);
-           // this->threads.push_back(t);  
-           
-            // Correct way: Bind 'this' pointer
             this->threads.emplace_back(&MaxFlowSolverParallel::thread_function, this, u, v, edge);
             edge->setHasThread();          
         }
 
 
         // wait till all threads finish
-        for (auto &thread : this->threads){
-            thread.join();
+        for (int i = 0; i < num_source_edges; i++) {
+        // for (int i = 0; i < this->threads.size(); i++) {
+            this->threads[i].join();
+            // thread.join();
         }
         cout << "All threads have finished, wow incredible :O" << endl;
         cout << "SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUm" << endl;
+
+        for (int i = 0; i < this->n; i++){
+            this->nodes[i]->freeLabel();
+            delete this->nodes[i];
+            this->nodes[i] = nullptr;
+            
+        }
+        this->nodes.clear();
     }
 
-    void hey() {
-        static int i = 1;
-        cout << i << ". hello there" << endl;
-        i++;
-        return;
-    }
-
- 
+   
     void thread_function(int u, int v, Edge *edge) {
         
         list<Edge *> neighbour_edges = this->graph[v];
@@ -291,13 +294,14 @@ public:
             // this->mx_sink_reached.lock();    // to check without mutex?
             if (this->sink_reached.load()){
                 // this->mx_num_blocked
-                mx_cv_augment.lock();
+                this->mx_cv_augment.lock();
                 this->num_blocked.fetch_add(1); // Atomically increments 'num_blocked' by 1
-                cv_augment.notify_all();
-                mx_cv_augment.unlock();
+                this->cv_augment.notify_all();
+                this->mx_cv_augment.unlock();
                 //..
                 unique_lock<mutex> lock(this->mx_cv);
                 this->cv.wait(lock, [this] {return (this->num_generated.load()-1) != this->num_blocked.load();} );
+                this->num_blocked.fetch_sub(1);
                 if (this->done.load()) {
                     return;
                 }
@@ -351,26 +355,27 @@ public:
             
             if (augmenter_thread) {
                 // wit until all the other threads are blocked on the conditional variable
-                unique_lock<mutex> l_augment(mx_cv_augment);
-                cv_augment.wait(l_augment, [this] {return (this->num_blocked.load()) != (this->num_generated.load() - 1); } );
+                unique_lock<mutex> l_augment(this->mx_cv_augment);
+                this->cv_augment.wait(l_augment, [this] {return (this->num_blocked.load()) != (this->num_generated.load() - 1); } );
                 
                 augmented_flow = augment();
+                // update max flow
+                this->max_flow += augmented_flow;
                 if (augmented_flow == 0 || !capacityLeft()) {
                     this->done.store(true);
+                    // this->threads.emplace_back(&MaxFlowSolverParallel::aux, this);
                 } else {
-                    // update max flow
-                    this->max_flow+=augmented_flow;
                     // reset
-                    resetLabels();   
+                    resetLabels();
                     augmenter_thread = false;
                     augmented_flow = 0;
+                    // this->num_blocked=0;
                 }
-                
+        
                 this->cv.notify_all();  // wake all threads (to restart)
 
             } else {
                 // spawn
-                list<Edge *> neighbour_edges = this->graph[v];
                 for (auto next_edge : neighbour_edges) {
                     // get if the end node of a possible nexte edge has already a label
                     bool next_end_node_labeled = this->nodes[next_edge->getEndNode()]->isLabeled();
@@ -379,33 +384,40 @@ public:
                         // this->threads.push_back(thread(&MaxFlowSolverParallel::thread_function, next_edge->getStartNode(), next_edge->getEndNode(), std::ref(next_edge)));
                         this->threads.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
                         next_edge->setHasThread();   
-                        mx_cv_augment.lock();
+                        this->mx_cv_augment.lock();
                         this->num_generated.fetch_add(1);
-                        cv_augment.notify_all();
-                        mx_cv_augment.unlock();
+                        this->cv_augment.notify_all();
+                        this->mx_cv_augment.unlock();
                     }
                 }
                 // block on CV
-                mx_cv_augment.lock();
+                this->mx_cv_augment.lock();
                 this->num_blocked.fetch_add(1); // Atomically increments 'num_blocked' by 1
-                cv_augment.notify_all();
-                mx_cv_augment.unlock();
+                this->cv_augment.notify_all();
+                this->mx_cv_augment.unlock();
                 unique_lock<mutex> lock(this->mx_cv);
                 this->cv.wait(lock, [this] {return (this->num_generated.load()-1) != this->num_blocked.load();} );
                 this->num_blocked.fetch_sub(1); 
             }
         }
+        return;
     }
 
+    // void aux() {
+    //     while (this->num_blocked > 0) {
+    //         this->cv.notify_all();
+    //     }
+    //     return;
+    // }
     long augment() {  
         // Step 3. let x = t, then do the following work until x = s.
         // • If the label of x is (y, +, l(x)), then let f(y, x) = f(y, x) + l(t)
         // • If the label of x is (y, −, l(x)), then let f(x, y) = f(x, y) − l(t)
         // • Let x = y
         int x = this->t;
-        int y = nodes[x]->getLabel()->pred_id;
+        int y = this->nodes[x]->getLabel()->pred_id;
         Edge *e;
-        long sink_flow = nodes[x]->getLabel()->flow;
+        long sink_flow = this->nodes[x]->getLabel()->flow;
 
         while (x != s){
             for (Edge *edge : this->graph[y]){
@@ -415,7 +427,7 @@ public:
                 }
             }
 
-            if (nodes[x]->getLabel()->sign == '+'){
+            if (this->nodes[x]->getLabel()->sign == '+'){
                 e->augment(sink_flow);
             }
             else{
@@ -423,7 +435,7 @@ public:
             }
         
             x = y;
-            y = nodes[x]->getLabel()->pred_id;
+            y = this->nodes[x]->getLabel()->pred_id;
         }
         // Then go to step 1.
         return sink_flow;
@@ -448,9 +460,9 @@ public:
 
     void resetLabels() {
         // reset all the nodes' labels apart from source
-        for (int i = 0; i < this->n-1; i++){
+        for (int i = 0; i < this->n; i++){
             if ( i != this->s)
-                nodes[i]->resetLabel();
+                this->nodes[i]->resetLabel();
         }
         this->sink_reached.store(false);
         

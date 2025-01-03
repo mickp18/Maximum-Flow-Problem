@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     cout << "found in: " <<  duration.count() << "ns" << endl;
     fout << "found in: " <<  duration.count() << "ns" << endl;
 
-    solver.printGraphToFile(argv[2]);
+    // solver.printGraphToFile(argv[2]);
     
     return 0;
 }
