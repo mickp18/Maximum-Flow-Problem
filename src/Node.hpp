@@ -169,7 +169,7 @@ class Node {
 
         void waitOnNodeCV() {
             unique_lock<mutex> lock(this->mx_cv);
-            this->cv.wait(lock, [this] {return this->labeled == false;} );
+            this->cv.wait(lock, [this] {return this->labeled.load();} );
         }
 
         /**

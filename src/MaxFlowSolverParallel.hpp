@@ -92,6 +92,9 @@ private:
 
     // create a vector of threads
     vector<thread> threads;
+    atomic<bool> augmenter_thread_exists;
+
+    mutex mx_print;
 
 public:
     // constructor
@@ -102,6 +105,7 @@ public:
         this->solved = false;
         this->graph = readGraph();
         this->visited = vector<int> (this->n);
+        this->augmenter_thread_exists.store(false);
         
         // in our implementation, we assume to have a source node and a sink node:
         // the source node is assumed to have index 0
@@ -154,8 +158,8 @@ public:
             edge->setResidual(edge_residual); // set the residual edge 
             edge_residual->setResidual(edge); // set the foward edge as "residual" of the residual edge
             
-            cout << "adding line " << i <<  ": " << line << endl;
-            cout << "adding to Node " << start_node << endl;
+            // cout << "adding line " << i <<  ": " << line << endl;
+            // cout << "adding to Node " << start_node << endl;
             graph[start_node].push_back(edge);
             graph[end_node].push_back(edge_residual);
             
@@ -174,7 +178,7 @@ public:
             }            
             // cout << "after end node" << endl;
         }
-        cout << "hey" << endl;
+        // cout << "hey" << endl;
         cout << "Graph read with nodes: " << endl;
         for (Node* nd : this->nodes) {
             cout << nd->getId() << " ";
@@ -259,19 +263,31 @@ public:
         for (auto edge : source_edges) { 
             int u = edge->getStartNode();
             int v = edge->getEndNode();
+            this->num_generated.fetch_add(1);
             this->threads.emplace_back(&MaxFlowSolverParallel::thread_function, this, u, v, edge);
-            edge->setHasThread();          
+            edge->setHasThread();  
+        
         }
+
+        // wait till done is true
+        // while (!this->done.load()) {}
 
 
         // wait till all threads finish
+        mx_print.lock();
+        cout << "num threads to join in solve: " << this->threads.size() << endl;
+        mx_print.unlock();
+// /*         for (int i = 0;  i < this->threads.size(); i++) {
         for (int i = 0; i < num_source_edges; i++) {
-        // for (int i = 0; i < this->threads.size(); i++) {
             this->threads[i].join();
             // thread.join();
         }
-        cout << "All threads have finished, wow incredible :O" << endl;
-        cout << "SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUm" << endl;
+// */
+
+        mx_print.lock();        
+        cout << "All threads have finished, wow incredible \\(^o^)/" << endl;
+        cout << "SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUM" << endl;
+        mx_print.unlock();
 
         for (int i = 0; i < this->n; i++){
             this->nodes[i]->freeLabel();
@@ -282,12 +298,17 @@ public:
         this->nodes.clear();
     }
 
-   
+//    (x, y) x->y
     void thread_function(int u, int v, Edge *edge) {
+        mx_print.lock();
+        cout << "(enter) I am tid: " << this_thread::get_id() << " with edge: (" << u << ", " << v << ") "<< endl;
+        mx_print.unlock();
+        bool is_augmenter = false;
+
         
-        list<Edge *> neighbour_edges = this->graph[v];
-        bool augmenter_thread = false;
+        // bool augmenter_thread_exists = false;
         long augmented_flow = 0;
+        vector<thread> threads_local;
 
         // thread operations...
         while (!this->done.load()){     // ?? need to lock the mutex of done ?? No -> https://chatgpt.com/share/6776c875-9cf0-8004-90ae-f5cdfbce30b4           
@@ -300,16 +321,36 @@ public:
                 this->mx_cv_augment.unlock();
                 //..
                 unique_lock<mutex> lock(this->mx_cv);
-                this->cv.wait(lock, [this] {return (this->num_generated.load()-1) != this->num_blocked.load();} );
-                this->num_blocked.fetch_sub(1);
+                mx_print.lock();
+                cout << "1. " << " edge: (" << u << ", " << v << ") " << "waiting on cv"  << endl;
+                cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load() << endl;
+                mx_print.unlock();
+                
+                this->cv.wait(lock, [this] {return (this->num_blocked.load() == 0 || this->done.load());} );
+                // this->num_blocked.fetch_sub(1);
+                
+                
+                mx_print.lock();                
+                cout << "1. " << " edge: (" << u << ", " << v << ") " << "gets out of cv"  << endl;
+                mx_print.unlock();
+                                
                 if (this->done.load()) {
-                    return;
+                    // ...        
+                    mx_print.lock();
+                    cout << " I am thread exiting (" << u << ", " << v << ")"<< endl;
+                    mx_print.unlock();
+
+                    break;
+                    // return;
                 }
+                // lock.unlock();
             }        
 
             bool u_is_labeled = this->nodes[u]->isLabeled();
             if (!u_is_labeled) {
+                cout << "Edge: (" << u << ", " << v << ") "<< "waiting on node " << u << endl;
                 this->nodes[u]->waitOnNodeCV();
+                u_is_labeled = this->nodes[u]->isLabeled();
             }
 
             bool v_is_labeled = this->nodes[v]->isLabeled();
@@ -322,11 +363,18 @@ public:
                 if (remaining_capacity > 0){
                     // assign the label (u, +, l(v)) to node v, Where l(v) = min(l(u), c(u, v) − f(u, v)). 
                     long label_flow = std::min(pred_flow, remaining_capacity);
+
+                    mx_print.lock();
+                    cout << "Edge: (" << u << ", " << v << ") "<< "setting label of node " << v << endl;
+                    mx_print.unlock();
+
+
                     this->nodes[v]->setLabel(u, '+', label_flow);
                     // check if the node on which the label was just set is the sink
-                    if (this->nodes[v]->isSink(t)) {
+                    if (this->nodes[v]->isSink(t) && this->augmenter_thread_exists.load() == false) {
                         this->sink_reached.store(true);
-                        augmenter_thread = true;
+                        this->augmenter_thread_exists.store(true);
+                        is_augmenter = true;
                     }
                 // Let u be labeled and scanned and v is labeled and un-scanned
                 }
@@ -340,12 +388,17 @@ public:
                 long edge_flow = edge->getFlow();
                 if (edge_flow > 0) {
                 // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
-                    long label_flow = std::min(pred_flow, edge_flow);            
+                    long label_flow = std::min(pred_flow, edge_flow);
+                    mx_print.lock();
+                    cout << " thread: (" << u << ", " << v << ") "<< "setting label of node " << u << endl;
+                    mx_print.unlock();
+
                     this->nodes[u]->setLabel(v, '-', label_flow);
                     // check if the node on which the label was just set is the sink
-                    if (this->nodes[v]->isSink(t)) {
+                    if (this->nodes[v]->isSink(t) && !this->augmenter_thread_exists.load()) {
                         this->sink_reached.store(true);
-                        augmenter_thread = true;
+                        augmenter_thread_exists.store(true);
+                        is_augmenter = true;
                     }
                 //Let v be labeled and scanned and u is labeled and un-scanned
                 }
@@ -353,62 +406,124 @@ public:
                 this->nodes[u]->unlockSharedMutex();
             } 
             
-            if (augmenter_thread) {
+            if (augmenter_thread_exists.load() && is_augmenter) {
                 // wit until all the other threads are blocked on the conditional variable
+                mx_print.lock();
+                cout << "I am the augmenter thread (" << u << ", " << v << ")"<< endl;
+                mx_print.unlock();
+
                 unique_lock<mutex> l_augment(this->mx_cv_augment);
-                this->cv_augment.wait(l_augment, [this] {return (this->num_blocked.load()) != (this->num_generated.load() - 1); } );
+                mx_print.lock();
+                cout << "*. Augmenter" << " edge: (" << u << ", " << v << ") " << "is waiting on cv augment"  << endl;
+                cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load() << endl;
+                mx_print.unlock();
+                this->cv_augment.wait(l_augment, [this] {return (this->num_blocked.load() == (this->num_generated.load() - 1)); } );
                 
+                mx_print.lock();
+                cout << "*. Augmenter" << " - edge: (" << u << ", " << v << ") " <<  "gets out of cv augment"  << endl;
+                
+
                 augmented_flow = augment();
+                cout << "augmented flow: " << augmented_flow << endl;
                 // update max flow
                 this->max_flow += augmented_flow;
                 if (augmented_flow == 0 || !capacityLeft()) {
+                    cout << "done" << endl;
                     this->done.store(true);
                     // this->threads.emplace_back(&MaxFlowSolverParallel::aux, this);
                 } else {
                     // reset
+                    cout << "reset" << endl;
                     resetLabels();
-                    augmenter_thread = false;
+                    augmenter_thread_exists.store(false);
+                    is_augmenter = false;
                     augmented_flow = 0;
-                    // this->num_blocked=0;
+                    this->num_blocked=0;
                 }
+                mx_print.unlock();
         
                 this->cv.notify_all();  // wake all threads (to restart)
 
             } else {
-                // spawn
-                for (auto next_edge : neighbour_edges) {
-                    // get if the end node of a possible nexte edge has already a label
-                    bool next_end_node_labeled = this->nodes[next_edge->getEndNode()]->isLabeled();
+                // SPAWNING OF NEW THREADS
 
-                    if (!next_end_node_labeled && !next_edge->getHasThread()) {
-                        // this->threads.push_back(thread(&MaxFlowSolverParallel::thread_function, next_edge->getStartNode(), next_edge->getEndNode(), std::ref(next_edge)));
-                        this->threads.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
-                        next_edge->setHasThread();   
-                        this->mx_cv_augment.lock();
-                        this->num_generated.fetch_add(1);
-                        this->cv_augment.notify_all();
-                        this->mx_cv_augment.unlock();
+                if (!this->nodes[v]->isSink(t)) {
+                    list<Edge *> neighbour_edges = this->graph[v];
+                    mx_print.lock();
+                    // cout << "tid " << this_thread::get_id() << "spawning" << endl;
+                    cout << "thread (" << u << ", " << v << ")"<< " starts spawning" << endl;
+                    mx_print.unlock();
+
+
+                    for (auto next_edge : neighbour_edges) {
+                        // get if the end node of a possible nexte edge has already a label
+                        bool next_end_node_labeled = this->nodes[next_edge->getEndNode()]->isLabeled();
+
+                        if (!next_end_node_labeled && !next_edge->getHasThread() && !this->augmenter_thread_exists) {
+                            
+                            mx_print.lock();
+                            cout << "thread (" << u << ", " << v << ")"<< " generates new thread (" << next_edge->getStartNode() << ", " << next_edge->getEndNode() << ")"<< endl;
+                            mx_print.unlock();
+
+                            threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
+                            next_edge->setHasThread();   
+                            this->mx_cv_augment.lock();
+                            this->num_generated.fetch_add(1);
+                            this->cv_augment.notify_all();
+                            this->mx_cv_augment.unlock();
+                        }
                     }
+                    mx_print.lock();
+                    // cout << "finished spawning" << endl;
+                    cout << "thread (" << u << ", " << v << ") finished spawning" << endl;
+                    cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load() << endl;
+                    mx_print.unlock();
                 }
                 // block on CV
                 this->mx_cv_augment.lock();
                 this->num_blocked.fetch_add(1); // Atomically increments 'num_blocked' by 1
-                this->cv_augment.notify_all();
+                // this->cv_augment.notify_all();
+                this->cv_augment.notify_one();
                 this->mx_cv_augment.unlock();
+                
                 unique_lock<mutex> lock(this->mx_cv);
-                this->cv.wait(lock, [this] {return (this->num_generated.load()-1) != this->num_blocked.load();} );
-                this->num_blocked.fetch_sub(1); 
+        
+                mx_print.lock();
+                // cout << "2. tid: " << this_thread::get_id() << " waiting on cv"  << endl;
+                cout << "2. thread (" << u << ", " << v << ")"<< " waiting on cv"  << endl;
+                cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load() << endl;
+                mx_print.unlock();
+
+                this->cv.wait(lock, [this] {return (this->num_blocked.load() == 0 || this->done.load());} );
+        
+                mx_print.lock();
+                // cout << "2. tid: " << this_thread::get_id() << " gets out of cv"  << endl;
+                cout << "2. thread (" << u << ", " << v << ")"<< " gets out of cv"  << endl;
+                mx_print.unlock();
+
+
+                // this->num_blocked.fetch_sub(1); 
             }
         }
+
+        // cout << "# generated threads: " << this->num_generated.load() << endl;
+        for (thread &t : threads_local) {
+            mx_print.lock();
+            // cout <<" i'm a thread with id: " << this_thread::get_id() << " and joining thread: " << t.get_id() << endl;
+            cout <<" i'm a thread (" << u << ", " << v << ")" << " and joining thread: " << t.get_id() << endl;
+            mx_print.unlock();
+
+            t.join();
+        } 
+        mx_print.lock();
+        // cout << "(return) I am a thread with id: " << this_thread::get_id()<< endl;
+        cout << "(return) I am thread (" << u << ", " << v << ")"<< endl;
+        mx_print.unlock();
+
         return;
     }
 
-    // void aux() {
-    //     while (this->num_blocked > 0) {
-    //         this->cv.notify_all();
-    //     }
-    //     return;
-    // }
+    
     long augment() {  
         // Step 3. let x = t, then do the following work until x = s.
         // • If the label of x is (y, +, l(x)), then let f(y, x) = f(y, x) + l(t)
@@ -437,7 +552,7 @@ public:
             x = y;
             y = this->nodes[x]->getLabel()->pred_id;
         }
-        // Then go to step 1.
+
         return sink_flow;
     }
 
