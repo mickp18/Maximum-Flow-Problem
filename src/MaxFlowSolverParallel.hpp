@@ -12,6 +12,8 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include <algorithm>
+#include <sstream>
 
 #include "Edge.hpp"
 #include "Node.hpp"
@@ -53,6 +55,9 @@ using namespace std;
 Happy New Year 2025!
 da MGM
  */
+ofstream tmpfout;
+void reorderFile(const std::string &inputFile, const std::string &outputFile);
+
 class MaxFlowSolverParallel
 {
 private:
@@ -87,6 +92,8 @@ private:
     atomic<bool> sink_reached;  // flag to indicate if the sink node is labelled
     atomic<int> num_generated;  // # of generated threads
     atomic<int> num_blocked;    // # of threads blocked on cv next_iteration
+    atomic<int> num_waiting_label;
+    atomic<int> num_running;
     mutex mx_done, mx_sink_reached, mx_num_genereated, mx_num_blocked;
     condition_variable cv, cv_augment;
     mutex mx_cv, mx_cv_augment;
@@ -101,6 +108,8 @@ private:
     mutex mng, mnb;
     mutex mx_node;
     condition_variable cv_nodes;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> start;  // reference time instant
 
 public:
     // constructor
@@ -124,6 +133,8 @@ public:
         this->sink_reached.store(false);
         this->num_generated.store(0);
         this->num_blocked.store(0);
+        this->num_waiting_label.store(0);
+        this->num_running.store(0);
     }
 
     long getMaxFlow() {
@@ -257,6 +268,13 @@ public:
     wait till all threads finish
     return max flow....
     */
+
+    auto computeTime() {
+        auto now = std::chrono::high_resolution_clock::now();    // time instant now
+        auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now - this->start);    // duration from start instant till current point in time
+        return duration.count();
+    }
+
     void solve(){
         this->nodes[this->s]->setSourceLabel();     // set label of source node
 
@@ -264,6 +282,10 @@ public:
         list<Edge *> source_edges = this->graph[this->s];
         int num_source_edges = source_edges.size();
         
+        this->start = std::chrono::high_resolution_clock::now();
+        tmpfout.open("../outputs/tmp_out.txt");;
+        tmpfout.close();
+
         //for every neighbour of source: generate a thread and pass it the func thread_function
         for (auto edge : source_edges) { 
             int u = edge->getStartNode();
@@ -280,7 +302,9 @@ public:
 
         // wait till all threads finish
         mx_print.lock();
-        cout << "num threads to join in solve: " << this->threads.size() << endl;
+        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+        cout << computeTime() << ": " << "num threads to join in solve: " << this->threads.size() << endl;
+        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
         mx_print.unlock();
 
         // for (int i = 0;  i < this->threads.size(); i++) {
@@ -288,9 +312,12 @@ public:
             this->threads[i].join();
         }
 
-        mx_print.lock();        
-        cout << "All threads have finished, wow incredible \\(^o^)/" << endl;
-        cout << "SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUM" << endl;
+
+        mx_print.lock(); 
+        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+        cout << computeTime() << ": " << "All threads have finished, wow incredible \\(^o^)/" << endl;
+        cout << computeTime() << ": " << "SIUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUM" << endl;
+        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
         mx_print.unlock();
 
         for (int i = 0; i < this->n; i++){
@@ -304,20 +331,30 @@ public:
     // lambda func for condition variable of worker threads
     bool f(bool *sem, int u, int v) {
         if (*sem == true ) {
-            *sem = false;            
-            cout << "-> thread (" << u << ", " << v << ") " << "stops, sem: " << *sem << endl;
-
+            *sem = false;       
+            
+            mx_print.lock();
+            tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+            tmpfout << computeTime() << ": " << "-> thread (" << u << ", " << v << ") " << "stops, sem: " << *sem << endl;
+            tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+            mx_print.unlock();
+            
             this->mnb.lock();
             this->num_blocked.fetch_add(1);
             this->mnb.unlock();
 
-            if (this->num_blocked.load() == (this->num_generated.load() - 1)) {
+            if ( (this->num_blocked.load() + this->num_waiting_label.load()) == (this->num_generated.load() - 1) ) {
+            // if ( this->num_running.load() == 1 ) {
                 this->cv_augment.notify_one();
             }
             return false;
         } else {            // sem == false
             *sem = true;
-            cout << "-> thread: (" << u << ", " << v << ") " << "restarts, sem: " << *sem << endl;
+            mx_print.lock();
+            tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+            tmpfout << computeTime() << ": " << "-> thread: (" << u << ", " << v << ") " << "restarts, sem: " << *sem << endl;
+            tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+            mx_print.unlock();
             return true;
         }
     };
@@ -328,37 +365,62 @@ public:
         vector<thread> threads_local;
         long augmented_flow = 0;
 
+        this->num_running.fetch_add(1);
+
         mx_print.lock();
-        cout << "(enter) I am tid: " << this_thread::get_id() << " with edge: (" << u << ", " << v << ") "<< endl;
+        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+        tmpfout << computeTime() << ": " << "(enter) I am tid: " << this_thread::get_id() << " with edge: (" << u << ", " << v << ") "<< endl;
+        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
         mx_print.unlock();
 
         // thread operations
         while (!this->done.load()){     // ?? need to lock the mutex of done ?? No -> https://chatgpt.com/share/6776c875-9cf0-8004-90ae-f5cdfbce30b4           
             if (this->sink_reached.load()){
-                {
-                    unique_lock<mutex> lock(this->mx_cv);
+                {   // block
                     mx_print.lock();
-                    cout << "(1) thread (" << u << ", " << v << ") will block on cv, nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load() << endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "(1) thread (" << u << ", " << v << ") will block on cv, nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load() << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
+
+                    this->num_running.fetch_sub(1);
                     
+                    unique_lock<mutex> lock(this->mx_cv);
                     this->cv.wait(lock, [this, &sem, u, v] {
-                        cout << "(1) thread (" << u << ", " << v << ") checks cv" << endl;
-                        cout << "-> (bef) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load() << endl;
+                        mx_print.lock();
+                        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                        tmpfout << computeTime() << ": " << "(1) thread (" << u << ", " << v << ") checks cv" << endl;
+                        tmpfout << computeTime() << ": " << "-> (bef) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load() << endl;
+                        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                        mx_print.unlock();
+
                         bool res = f(&sem, u, v);
-                        cout << "-> (aft) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load() << endl;
+                        
+                        mx_print.lock();
+                        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                        tmpfout << computeTime() << ": " << "-> (aft) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load() << endl;
+                        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                        mx_print.unlock();
                         return res;
 
                         // return f(&sem, u, v);
                     });
 
-                    mx_print.lock();                
-                    cout << "(1) " << " edge: (" << u << ", " << v << ") " << "gets out of cv"  << endl;
+                    this->num_running.fetch_add(1);
+
+                    mx_print.lock();
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);               
+                    tmpfout << computeTime() << ": " << "(1) " << " edge: (" << u << ", " << v << ") " << "gets out of cv"  << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
                 }
                 
                 if (this->done.load()) {
+                    // this->num_running.fetch_sub(1);
                     mx_print.lock();
-                    cout << "(*) thread (" << u << ", " << v << ") exits"<< endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "(*) thread (" << u << ", " << v << ") exits"<< endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
                     break;
                 }
@@ -372,31 +434,111 @@ public:
             //     this->num_blocked.fetch_sub(1);
             //     u_is_labeled = this->nodes[u]->isLabeled();
             // }
+            mx_print.lock();
+            tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+            tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u << endl;
+            tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+            mx_print.unlock();
 
             this->nodes[u]->lockSharedMutex();
+
+
+            mx_print.lock();
+            tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+            tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u << endl;
+            tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v << endl;
+            tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+            mx_print.unlock();
+
             this->nodes[v]->lockSharedMutex();
+
+            mx_print.lock();
+            tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+            tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of v=" << v << endl;
+            tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+            mx_print.unlock();
+
             bool u_is_labeled = this->nodes[u]->isLabeled();
             bool v_is_labeled = this->nodes[v]->isLabeled();
+            // bool& ref_u = ref(u_is_labeled);
             
+            // thread blocked if both nodes have no label, remains blocked until one of the two nodes gets a label or until there is no augmenter left
             if (!(u_is_labeled || v_is_labeled)) {
-                // ... block on sth
+                bool first_time = true;
+
+                // if (this->num_running.load() == 1 && (this->num_blocked.load() + this->num_waiting_label.load() == (this->num_generated.load() - 1))) {
+                if ((this->num_blocked.load() + this->num_waiting_label.load() == (this->num_generated.load() - 1))) {
+                    this->done.store(true);
+                    this->cv.notify_all();
+                    this->cv_nodes.notify_all();
+                    this->nodes[u]->unlockSharedMutex();
+                    this->nodes[v]->unlockSharedMutex();
+                    break;
+                }
+
+                this->num_waiting_label.fetch_add(1);
+                this->num_running.fetch_sub(1);
+                
                 unique_lock<mutex> lock(this->mx_node);
-                this->cv_nodes.wait(lock, [this, u, v] { 
-                    if (!(this->nodes[v]->isLabeled() || this->nodes[u]->isLabeled())) {
-                        this->nodes[u]->unlockSharedMutex();
-                        this->nodes[v]->unlockSharedMutex();
+                this->cv_nodes.wait(lock, [this, u, v, &u_is_labeled, &v_is_labeled, &first_time] { 
+                    // ref_u = this->nodes[u]->isLabeled();
+                    if (!first_time) {
+                        u_is_labeled = this->nodes[u]->isLabeled();
+                        v_is_labeled = this->nodes[v]->isLabeled();
+                    } else {
+                        first_time = false;
+                    }
+                    // if (!(this->nodes[v]->isLabeled() || this->nodes[u]->isLabeled())) {
+                    if (!u_is_labeled &&  !v_is_labeled) {
+                        // this->num_blocked.fetch_add(1);                
                         mx_print.lock();
-                        cout << "Thread (" << u << ", " << v << ") "<< "blocks since neither " << u << " nor " << v << " are labeled" << endl;
+                        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                        tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "blocks since neither " << u << " nor " << v << " are labeled" << endl;
+                        this->nodes[u]->unlockSharedMutex();
+                        tmpfout << computeTime() << ": " << "(no labels of nodes): Thread (" << u << ", " << v << ") Unlocked mx of u=" << u << endl;
+                        this->nodes[v]->unlockSharedMutex();
+                        tmpfout << computeTime() << ": " << "(no labels of nodes): Thread (" << u << ", " << v << ") Unlocked mx of v=" << v << endl;
+                        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                         mx_print.unlock();
+
                         return false;
                     }
+                    // this->num_blocked.fetch_sub(1);
+                    // this->nodes[u]->lockSharedMutex();
+                    // this->nodes[v]->lockSharedMutex();
+                    mx_print.lock();
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                    mx_print.unlock();
+
                     this->nodes[u]->lockSharedMutex();
+
+                    mx_print.lock();
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u << endl;
+                    tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                    mx_print.unlock();
                     this->nodes[v]->lockSharedMutex();
+
+                    mx_print.lock();
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                    mx_print.unlock();
                     return true;
                 });
-                u_is_labeled = this->nodes[u]->isLabeled();
-                v_is_labeled = this->nodes[v]->isLabeled();
+                this->num_waiting_label.fetch_sub(1);
+                this->num_running.fetch_add(1);
+                
+                if (this->done.load()) {
+                    break;
+                }
 
+
+                // u_is_labeled = this->nodes[u]->isLabeled();
+                // v_is_labeled = this->nodes[v]->isLabeled();
             }
 
             long pred_flow = this->nodes[u]->getLabel()->flow;
@@ -409,9 +551,11 @@ public:
                     long label_flow = std::min(pred_flow, remaining_capacity);
 
                     mx_print.lock();
-                    cout << "Thread (" << u << ", " << v << ") "<< "setting label of node " << v << endl;
-                    this->nodes[v]->setLabel(u, '+', label_flow);
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "setting label of node " << v << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
+                    this->nodes[v]->setLabel(u, '+', label_flow);
                     // check if the node on which the label was just set is the sink
                     if (this->nodes[v]->isSink(t) && this->augmenter_thread_exists.load() == false) {
                         this->sink_reached.store(true);
@@ -424,7 +568,9 @@ public:
                 } 
                 else {
                     mx_print.lock();
-                    cout << "Thread (" << u << ", " << v << ") "<< "has remaining capacity <= 0: " << remaining_capacity << endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "has remaining capacity <= 0: " << remaining_capacity << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
                 }
             }
@@ -436,10 +582,11 @@ public:
                 // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
                     long label_flow = std::min(pred_flow, edge_flow);
                     mx_print.lock();
-                    cout << " Thread: (" << u << ", " << v << ") "<< "setting label of node " << u << endl;
-
-                    this->nodes[u]->setLabel(v, '-', label_flow);
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "Thread: (" << u << ", " << v << ") "<< "setting label of node " << u << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
+                    this->nodes[u]->setLabel(v, '-', label_flow);
                     // check if the node on which the label was just set is the sink
                     if (this->nodes[v]->isSink(t) && !this->augmenter_thread_exists.load()) {
                         this->sink_reached.store(true);
@@ -451,46 +598,65 @@ public:
                 }
                 else {
                     mx_print.lock();
-                    cout << "Thread (" << u << ", " << v << ") "<< "has edge flow <= 0: " << edge_flow << endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "has edge flow <= 0: " << edge_flow << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
                 }
-                //this->nodes[u]->signalNodeCV();
             } 
             
-            this->nodes[u]->unlockSharedMutex();
-            this->nodes[v]->unlockSharedMutex();
+            // this->nodes[u]->unlockSharedMutex();
+            // this->nodes[v]->unlockSharedMutex();
             
+            mx_print.lock();
+            tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+            this->nodes[u]->unlockSharedMutex();
+            tmpfout << computeTime() << ": " << "cv_nodes: Thread (" << u << ", " << v << ") UNlocked mx of u=" << u << endl;
+            this->nodes[v]->unlockSharedMutex();
+            tmpfout << computeTime() << ": " << "cv_nodes: Thread (" << u << ", " << v << ") UNlocked mx of v=" << v << endl;
+            tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+            mx_print.unlock();
+
+
             if (this->augmenter_thread_exists.load() && is_augmenter) {
                 // AUGMENTER THREAD
 
-                // wit until all the other threads are blocked on the conditional variable
+                // wait until all the other threads are blocked on the conditional variable
                 {
-
                     mx_print.lock();
-                    cout << "I am the augmenter thread (" << u << ", " << v << ")"<< endl;
-                    cout << "*. Augmenter" << " edge: (" << u << ", " << v << ") " << "is waiting on cv augment"  << endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "I am the augmenter thread (" << u << ", " << v << ")"<< endl;
+                    tmpfout << computeTime() << ": " << "*. Augmenter" << " edge: (" << u << ", " << v << ") " << "is waiting on cv augment"  << endl;
                     // cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load() << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
 
-                    if (this->num_blocked.load() < (this->num_generated.load() - 1)) {
-                        unique_lock<mutex> l_augment(this->mx_cv);
-                        this->cv_augment.wait(l_augment, [this, u, v] {
-                            mx_print.lock();
-                            cout << "thread (" << u << ", " << v << "), " << "nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load() << endl;
-                            mx_print.unlock();
-                            return (this->num_blocked.load() == (this->num_generated.load() - 1)); 
-                        });
-                    }
+                    // if ((this->num_blocked.load() + this->num_waiting_label.load()) < (this->num_generated.load() - 1)) {
+                    unique_lock<mutex> l_augment(this->mx_cv);
+                    this->cv_augment.wait(l_augment, [this, u, v] {
+                        mx_print.lock();
+                        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                        tmpfout << computeTime() << ": " << "thread (" << u << ", " << v << "), " << "nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load() << endl;
+                        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                        mx_print.unlock();
+                        return ((this->num_blocked.load() + this->num_waiting_label.load()) == (this->num_generated.load() - 1) ); 
+                        // return (this->num_running.load() ==  1); 
+                    });
                 }
 
+
                 mx_print.lock();
-                cout << "*. Augmenter" << " - edge: (" << u << ", " << v << ") " <<  "gets out of cv augment"  << endl;
+                tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                tmpfout << computeTime() << ": " << "*. Augmenter" << " - edge: (" << u << ", " << v << ") " <<  "gets out of cv augment"  << endl;
+                tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                 mx_print.unlock();
                 
 
                 augmented_flow = augment();
                 mx_print.lock();
-                cout << "augmented flow: " << augmented_flow << endl;
+                tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                tmpfout << computeTime() << ": " << "augmented flow: " << augmented_flow << endl;
+                tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                 mx_print.unlock();
 
                 // update max flow
@@ -498,15 +664,20 @@ public:
                 
                 if (augmented_flow == 0 || !sinkCapacityLeft() || !sourceCapacityLeft()) {
                     mx_print.lock();
-                    cout << "done" << endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "done" << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
 
                     this->done.store(true);
                 } 
                 // reset
                 mx_print.lock();
-                cout << "reset" << endl;
+                tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                tmpfout << computeTime() << ": " << "reset" << endl;
+                tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                 mx_print.unlock();
+
                 resetLabels();
                 this->augmenter_thread_exists.store(false);
                 is_augmenter = false;
@@ -514,7 +685,7 @@ public:
                 this->mnb.lock();
                 this->num_blocked.store(0);
                 this->mnb.unlock();
-                this->cv.notify_all();  // wake all threads (to restart)
+                this->cv.notify_all();  // wake all blocked threads (to restart)
 
             } else {
                 //  WORKER THREAD
@@ -524,7 +695,9 @@ public:
                     list<Edge *> neighbour_edges = this->graph[v];
 
                     mx_print.lock();
-                    cout << "thread (" << u << ", " << v << ")"<< " starts spawning" << endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "thread (" << u << ", " << v << ")"<< " starts spawning" << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
 
                     for (auto next_edge : neighbour_edges) {
@@ -534,7 +707,9 @@ public:
                         if (!next_end_node_labeled && !next_edge->getHasThread() && !this->augmenter_thread_exists) {
                             
                             mx_print.lock();
-                            cout << "thread (" << u << ", " << v << ")"<< " generates new thread (" << next_edge->getStartNode() << ", " << next_edge->getEndNode() << ")"<< endl;
+                            tmpfout << computeTime() << ": " << "thread (" << u << ", " << v << ")"<< " generates new thread (" << next_edge->getStartNode() << ", " << next_edge->getEndNode() << ")"<< endl;
+                            tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                            mx_print.unlock();
                             {
                                 lock_guard<mutex> lock(this->mx_cv);
                                 this->mng.lock();
@@ -543,59 +718,82 @@ public:
                                 next_edge->setHasThread(); 
                                 threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
                             }
-                            mx_print.unlock();
                         }
                     }
                     mx_print.lock();
-                    cout << "thread (" << u << ", " << v << ") finished spawning" << endl;
-                    cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load() << endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "thread (" << u << ", " << v << ") finished spawning; nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load()<< endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
                 }
 
                 // blocking of WORKER on CV
+
+                // if this is the last running thread and it is about to get blocked, there is no more augmenting flow available, so the algorithm should end
+                // if (this->num_running.load() == 1) {
+                if ((this->num_blocked.load() + this->num_waiting_label.load()) == (this->num_generated.load() - 1)) {
+                    this->done.store(true);
+                    this->cv.notify_all();
+                    this->cv_nodes.notify_all();
+                    break;
+                }
+
                 {
                     mx_print.lock();
-                    unique_lock<mutex> lock(this->mx_cv);
-                    // this->mnb.lock();
-                    // this->num_blocked.fetch_add(1); // Atomically increments 'num_blocked' by 1
-                    // this->mnb.unlock();
-                    // if (this->num_blocked.load() == (this->num_generated.load() - 1)) {
-                    //     this->cv_augment.notify_one();
-                    // }
-                    // cout << "(2) " << " edge: (" << u << ", " << v << ") " << "waiting on cv"  << endl;
-                    // cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load() << endl;
-
-                    cout << "(2) thread (" << u << ", " << v << ") will block on cv, nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load() << endl;
+                    tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                    tmpfout << computeTime() << ": " << "(2) thread (" << u << ", " << v << ") will block on cv, nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load() << endl;
+                    tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                     mx_print.unlock();
                     
+                    this->num_running.fetch_sub(1);
+                    unique_lock<mutex> lock(this->mx_cv);
                     this->cv.wait(lock, [this, &sem, u, v] {
-                        cout << "(2) thread (" << u << ", " << v << ") checks cv" << endl;
-                        cout << "-> (bef) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load() << endl;
+                        mx_print.lock();
+                        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                        tmpfout << computeTime() << ": " << "(2) thread (" << u << ", " << v << ") checks cv" << endl;
+                        tmpfout << computeTime() << ": " << "-> (bef) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load() << endl;
+                        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                        mx_print.unlock();
+
                         bool res = f(&sem, u, v);
-                        cout << "-> (aft) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load() << endl;
+                        
+                        mx_print.lock();
+                        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                        tmpfout << computeTime() << ": " << "-> (aft) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load() << endl;
+                        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
+                        mx_print.unlock();
                         return res;
 
                         // cout << "thread (" << u << ", " << v << "), " << "nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load() << endl;
                         // return f(&sem, u, v);
                     });
-
+                    this->num_running.fetch_add(1);
                 }
                 mx_print.lock();
-                cout << "(2) thread (" << u << ", " << v << ")"<< " gets out of cv"  << endl;
+                tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+                tmpfout << computeTime() << ": " <<"(2) thread (" << u << ", " << v << ")"<< " gets out of cv"  << endl;
+                tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
                 mx_print.unlock();
             }
         }
 
         for (thread &t : threads_local) {
             mx_print.lock();
-            cout <<" i'm a thread (" << u << ", " << v << ")" << " and joining thread: " << t.get_id() << endl;
+            tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+            tmpfout << computeTime() << ": " << "i'm a thread (" << u << ", " << v << ")" << " and joining thread: " << t.get_id() << endl;
+            tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
             mx_print.unlock();
 
             t.join();
         } 
         mx_print.lock();
-        cout << "(return) end of thread (" << u << ", " << v << ")"<< endl;
+        tmpfout.open("../outputs/tmp_out.txt", ios_base::out | ios_base::app);
+        tmpfout << computeTime() << ": " << "(return) end of thread (" << u << ", " << v << ")"<< endl;
+        tmpfout.close(); reorderFile("../outputs/tmp_out.txt", "../outputs/tmp_out_sorted.txt");
         mx_print.unlock();
+
+        this->num_running.fetch_sub(1);
+        this->num_generated.fetch_sub(1);
 
         return;
     }
@@ -674,3 +872,71 @@ public:
     // long bfs(){return 0.00;}
 
 };
+
+
+
+
+// Define a struct to hold each line with its integer value and the string part
+struct Line {
+    int number;   // Integer before the first colon
+    std::string text;   // The string part after the first colon
+
+    // Constructor to initialize the struct
+    Line(int num, const std::string& txt) : number(num), text(txt) {}
+};
+
+void reorderFile(const std::string& inputFile, const std::string& outputFile) {
+    // Open the input file
+    std::ifstream inFile(inputFile);
+    if (!inFile.is_open()) {
+        std::cerr << "Could not open input file!" << std::endl;
+        return;
+    }
+
+    // Vector to hold the lines
+    std::vector<Line> lines;
+
+    // Read each line from the input file
+    std::string line;
+    while (std::getline(inFile, line)) {
+        std::istringstream iss(line);
+        int number;
+        char colon; // To read the colon ':'
+        std::string text;
+
+        // Try reading the integer number before the first colon
+        if (iss >> number >> colon) {
+            // Read the rest of the line (the string part after the first colon)
+            std::getline(iss, text);
+            // Trim any leading spaces from the string
+            text = text.substr(text.find_first_not_of(" \t"));
+
+            // Store the line in the vector
+            lines.push_back(Line(number, text));
+        }
+    }
+
+    // Close the input file
+    inFile.close();
+
+    // Sort the lines by the integer value (number)
+    std::sort(lines.begin(), lines.end(), [](const Line& a, const Line& b) {
+        return a.number < b.number;  // Compare based on integer value
+    });
+
+    // Open the output file
+    std::ofstream outFile(outputFile);
+    if (!outFile.is_open()) {
+        std::cerr << "Could not open output file!" << std::endl;
+        return;
+    }
+
+    // Write the sorted lines to the output file
+    for (const auto& l : lines) {
+        outFile << l.number << ": " << l.text << std::endl;
+    }
+
+    // Close the output file
+    outFile.close();
+    //std::cout << "File has been reordered and written to " << outputFile << std::endl;
+}

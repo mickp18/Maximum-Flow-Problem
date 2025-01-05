@@ -21,7 +21,8 @@ class Node {
         label_t *label;
         atomic<bool> labeled;
       
-        shared_mutex mx_node;
+        // shared_mutex mx_node;
+        mutex mx_node;
         mutex mx_cv;       // to read/write label of node
         condition_variable cv;      // used to signal when the label of a node is set
 
