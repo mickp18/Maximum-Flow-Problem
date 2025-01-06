@@ -17,8 +17,10 @@ std::mutex mx, mx_print;
 int iterations, max_iterations = 3, max_threads = 3;
 std::atomic<int> n_running(0);
 bool threads_ready = false, done = false;
-std::atomic<bool> sink_reached;
+std::atomic<bool> sink_reached(false);
 std::atomic<int> id(0);
+bool sink = false;
+std::mutex mutex;
 
 class ThreadPool {
 public:
@@ -63,18 +65,28 @@ void ThreadPool::ThreadLoop()
         std::function<void()> job;
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
-            mutex_condition.wait(lock, [this]
-                                 { return !jobs.empty() || should_terminate || !sink_reached.load(); });
+
+            // Wait until there are jobs, termination is requested, or sink is reached
+            mutex_condition.wait(lock, [this]()
+                                 { return (!jobs.empty() || should_terminate) && !sink_reached.load(); });
+                                // return !jobs.empty() || should_terminate || !sink_reached.load();});
+                                //          FALSE    ||       FALSE       ||  TRUE    return true -> wake up      
             if (should_terminate)
             {
                 return;
             }
-            job = jobs.front();
-            jobs.pop();
+
+            if (!jobs.empty())
+            {
+                job = jobs.front();
+                jobs.pop();
+            }
         }
+
         n_running.fetch_add(1);
         job();
         n_running.fetch_sub(1);
+        cv_mina.notify_one();
     }
 }
 
@@ -149,11 +161,9 @@ void thread_function(ThreadPool *thread_pool) {
         if (!sink_reached.load()){
             // add 2 jobs for 2 neighbors
             id.fetch_add(1);
-            thread_pool->QueueJob([thread_pool]
-                                { thread_function(thread_pool); });
+            thread_pool->QueueJob([thread_pool] { thread_function(thread_pool); });  
             id.fetch_add(1);
-            thread_pool->QueueJob([thread_pool]
-                                { thread_function(thread_pool); });
+            thread_pool->QueueJob([thread_pool] { thread_function(thread_pool); });  
         }
         mx_print.lock();
         std::cout << "task with id " << tmp << " completed" << std::endl;
@@ -187,11 +197,9 @@ int main(){
 
         // add 2 jobs for 2 neighbors
         id.fetch_add(1);
-        thread_pool.QueueJob([&thread_pool]
-                              { thread_function(&thread_pool); });
+        thread_pool.QueueJob([&thread_pool] { thread_function(&thread_pool); });
         id.fetch_add(1);
-        thread_pool.QueueJob([&thread_pool]
-                              { thread_function(&thread_pool); });
+        thread_pool.QueueJob([&thread_pool] { thread_function(&thread_pool); });
 
         // Wait until job found sink  and Wait until all threads completed running task
         {
@@ -210,6 +218,7 @@ int main(){
         std::cout << "sink was reached and everyone stopped working" << std::endl;  
         mx_print.unlock();
 
+        sink_reached.store(false);
         // Termination condition
         if (iterations == max_iterations){
             break;
@@ -227,7 +236,8 @@ int main(){
         mx_print.unlock();
         
         iterations++;
-        sink_reached.store(false);
+        id.store(0);
+        mutex_condition.notify_all();
     }
 
  
