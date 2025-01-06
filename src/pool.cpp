@@ -14,9 +14,11 @@ std::condition_variable mutex_condition;
 
 std::condition_variable cv_slaves, cv_mina, cv_main;
 std::mutex mx, mx_print;
-int iterations, max_iterations = 3, max_threads = 5;
-std::atomic<int> num_threads;
+int iterations, max_iterations = 3, max_threads = 3;
+std::atomic<int> n_running(0);
 bool threads_ready = false, done = false;
+std::atomic<bool> sink_reached;
+std::atomic<int> id(0);
 
 class ThreadPool {
 public:
@@ -24,6 +26,7 @@ public:
     void QueueJob(const std::function<void()> &job);
     void Stop();
     bool busy();
+    void clearQueue();
 
 private:
     void ThreadLoop();
@@ -42,6 +45,7 @@ void ThreadPool::Start()
     const uint32_t num_threads =
         std::thread::hardware_concurrency();
     // threads.resize(num_threads);
+    std::cout << "Starting " << num_threads << " threads" << std::endl;
     for (uint32_t i = 0; i < num_threads; i++)
     {
         // threads.at(i) = std::thread(&ThreadLoop);
@@ -60,7 +64,7 @@ void ThreadPool::ThreadLoop()
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
             mutex_condition.wait(lock, [this]
-                                 { return !jobs.empty() || should_terminate; });
+                                 { return !jobs.empty() || should_terminate || !sink_reached.load(); });
             if (should_terminate)
             {
                 return;
@@ -68,7 +72,9 @@ void ThreadPool::ThreadLoop()
             job = jobs.front();
             jobs.pop();
         }
+        n_running.fetch_add(1);
         job();
+        n_running.fetch_sub(1);
     }
 }
 
@@ -105,6 +111,13 @@ void ThreadPool::Stop()
     threads.clear();
 }
 
+void ThreadPool::clearQueue() {
+    // Clear the jobs queue
+    {
+        std::lock_guard<std::mutex> lock(mx);
+        jobs = {};
+    }
+}
 
 
 /**
@@ -118,76 +131,35 @@ void ThreadPool::Stop()
  */
 
 void thread_function(ThreadPool *thread_pool) {
-    if (num_threads.load() == 0) {
-        while (true) {
-            mx_print.lock();
-            std::cout << "Iteration " << iterations << ": " << "I am master thread " << num_threads.load() << " doing my tasks here and I'll sleep one sec" << std::endl; 
-            mx_print.unlock();
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+    mx_print.lock();
+    std::cout << "Iteration " << iterations << ": " << "I am slave thread " << id.load() << " doing my tasks here and I'll sleep one sec" << std::endl;
+    mx_print.unlock();
 
-            num_threads.fetch_add(1);
-            thread_pool->QueueJob([thread_pool] { thread_function(thread_pool); });                
-            
-
-            // Wait until all threads have reached the condition
-            {
-                std::unique_lock<std::mutex> lock(mx);
-                cv_mina.wait(lock, [] { return num_threads.load() == max_threads; });
-            }
-
-            // Execute some instructions
-            mx_print.lock();
-            std::cout << "Iteration " << iterations << ": " << "I am master thread " << num_threads.load() << " and I've been woken up since all threads have reached the condition" << std::endl; 
-            mx_print.unlock();
-            
-            // Termination condition, master exists without waking up other threads
-            if (iterations == max_iterations) {
-                break;
-            }
-
-            iterations++;
-            num_threads.store(0);
-
-            // Second phase: Unlock all threads
-            {
-                std::lock_guard<std::mutex> lock(mx);
-                threads_ready = true;
-            }
-            cv_slaves.notify_all();      
-        }
-        mx_print.lock();
-        std::cout << "Iteration " << iterations << ": " << "Master thread exiting" << std::endl;
-        mx_print.unlock();
-        std::lock_guard<std::mutex> lock(mx);
-        done = true;
-        cv_main.notify_one();
-    } else {
-        mx_print.lock();
-        std::cout << "Iteration " << iterations << ": " << "I am slave thread " << num_threads.load() << " doing my tasks here and I'll sleep one sec" << std::endl;
-        mx_print.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    
+    if (id.load()==6){
+        sink_reached.store(true);
+        std::cout << "Sink reached" << std::endl;
+        std::cout << "MINA WAKE UP" << std::endl;
+        cv_mina.notify_one();
+    }
+    else {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-
-        // First phase: Wait until all threads reach this point
-        {
-            std::unique_lock<std::mutex> lock(mx);
-            if (num_threads.load() == max_threads) {
-                // Notify TA that all threads have reached the condition
-                cv_mina.notify_one();
-            } else {
-                num_threads.fetch_add(1);
-                thread_pool->QueueJob([thread_pool] { thread_function(thread_pool); });
-            }
-            mx_print.lock();
-            std::cout << "Iteration " << iterations << ": " << "I am slave thread " << num_threads.load() << " waiting to be woken up" << std::endl;
-            mx_print.unlock();
-            // Wait until TA processes and signals to proceed
-            cv_slaves.wait(lock, [] { return threads_ready; });
+        int tmp = id.load();
+        if (!sink_reached.load()){
+            // add 2 jobs for 2 neighbors
+            id.fetch_add(1);
+            thread_pool->QueueJob([thread_pool]
+                                { thread_function(thread_pool); });
+            id.fetch_add(1);
+            thread_pool->QueueJob([thread_pool]
+                                { thread_function(thread_pool); });
         }
         mx_print.lock();
-        std::cout << "I am slave thread " << num_threads.load() << " and I was woken up, I'll exit" << std::endl;
+        std::cout << "task with id " << tmp << " completed" << std::endl;
         mx_print.unlock();
     }
-
+    return;
 }
 
 /**
@@ -200,27 +172,65 @@ void thread_function(ThreadPool *thread_pool) {
  * @return 0 on success.
  */
 int main(){
-    // pool 
-        // 
-    // size_t num_threads = std::thread::hardware_concurrency();
+   
     ThreadPool thread_pool;
-    std::cout << thread_pool.busy() << std::endl;
+    // std::cout << thread_pool.busy() << std::endl;
     std::cout << "starting" << std::endl;
-    num_threads.store(0);
     thread_pool.Start();
-    thread_pool.QueueJob([&thread_pool] { thread_function(&thread_pool); });
 
-
-    // if (thread_pool.busy()){
-    //     std::cout << thread_pool.busy() << std::endl;
-    //     thread_pool.Stop();        
-    // }
-    
-    // Wait until master thread finishes
+    while (true)
     {
-        std::unique_lock<std::mutex> lock(mx);
-        cv_main.wait(lock, [] { return done; });    // buonasera hello hey HEY hEy HeY Hey HEy hEY heY hello echo hey
+        mx_print.lock();
+        std::cout << "Iteration " << iterations << ": " << "I am master thread: " << id.load() << " doing my tasks here and I'll sleep one sec" << std::endl;
+        mx_print.unlock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        // add 2 jobs for 2 neighbors
+        id.fetch_add(1);
+        thread_pool.QueueJob([&thread_pool]
+                              { thread_function(&thread_pool); });
+        id.fetch_add(1);
+        thread_pool.QueueJob([&thread_pool]
+                              { thread_function(&thread_pool); });
+
+        // Wait until job found sink  and Wait until all threads completed running task
+        {
+            std::unique_lock<std::mutex> lock(mx);
+            cv_mina.wait(lock, []
+                         { return sink_reached.load() && n_running.load() == 0; });
+        }
+        // {
+        //     std::unique_lock<std::mutex> lock(mx);
+        //     cv_mina.wait(lock, []
+        //                  { return n_running.load() == 0; });
+        // }
+
+        // Execute some instructions
+        mx_print.lock();
+        std::cout << "sink was reached and everyone stopped working" << std::endl;  
+        mx_print.unlock();
+
+        // Termination condition
+        if (iterations == max_iterations){
+            break;
+        }
+
+
+        mx_print.lock();
+        std::cout << "resetting queue..." << std::endl;
+        mx_print.unlock();
+
+        thread_pool.clearQueue();
+
+        mx_print.lock();
+        std::cout << "resettting labels..." << std::endl;
+        mx_print.unlock();
+        
+        iterations++;
+        sink_reached.store(false);
     }
+
+ 
     std::cout << "main ready to end" << std::endl;//MI senti? si, tu mi senti? adesso si
     thread_pool.Stop();        
     std::cout << "Main exiting" << std::endl;
@@ -228,3 +238,57 @@ int main(){
 
     return 0;
 }
+
+// solve 
+    // create pool
+    // start pool
+    // neighbours edges of source
+    // while true
+        // enqueue jobs for all neighbours
+        // waits for a job to reach sink
+        // check if flow was augmented
+            // if not, break
+            // if yes
+                // waits remaining tasks to finish
+                // destroy queue
+                // reset labels
+                // recreate queue
+                // loop until no more augmenting paths are found
+    // stop pool
+                
+
+// task function (starnode, endnode)
+    // tries to put a label on end node
+    // if not possible, return
+    // else, 
+        // update label  on endnode/startnode
+        // if label on sink
+            // done = true;
+            // augment flow
+            // wake up main
+            // return
+        // else 
+            // find neighbours 
+            // for each neighbour
+                // if (!done) enqueue job for neighbour to do task function (starnode, endnode)
+            // return
+
+// avoid threads taking from queue while resetting labels
+
+/*
+main                                t1                      t2                                         
+waiting on done with cv...          puts label on sink      sleeping..
+                                    sink found              
+                                    augment
+                                    wake main
+wakes up                            return                  sleeping...
+                                                            if (!done) puts laebl
+                                                            return
+wait on n_running with another cv
+wakes up
+destroy queue
+reset all labels
+recreate queue
+loop until no more augmentig paths are found
+
+*/
