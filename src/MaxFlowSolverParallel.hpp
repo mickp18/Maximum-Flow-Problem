@@ -291,8 +291,16 @@ public:
             int u = edge->getStartNode();
             int v = edge->getEndNode();
 
-            this->threads.emplace_back(&MaxFlowSolverParallel::thread_function, this, u, v, edge);
-            
+            if (edge->isResidual())
+            {
+                // threads.emplace_back(&MaxFlowSolverParallel::thread_function, this, edge->getEndNode(), edge->getStartNode(), edge);
+                continue;
+            }
+            else
+            {
+                threads.emplace_back(&MaxFlowSolverParallel::thread_function, this, edge->getStartNode(), edge->getEndNode(), edge);
+            }
+
             this->mng.lock();
             this->num_generated.fetch_add(1);
             this->mng.unlock();
@@ -545,6 +553,9 @@ public:
             // EDGE (U,V)
             // if u is labeled and unscanned, v is unlabeled and f(u, v) < c(u, v) ( equiv. to c(u,v) - f(u,v) > 0)
             if (u_is_labeled && !v_is_labeled) {
+                mx_print.lock();
+                cout << "FORWARD EDGE (" << u << ", " << v << ")" << endl;
+                mx_print.unlock();
                 long remaining_capacity = edge->getRemainingCapacity();
                 if (remaining_capacity > 0){
                     // assign the label (u, +, l(v)) to node v, Where l(v) = min(l(u), c(u, v) − f(u, v)). 
@@ -577,6 +588,9 @@ public:
             // EDGE (V, U)
             // else if v is labeled and un-scanned, u is unlabeled and f(u, v) > 0.
             else if (v_is_labeled && !u_is_labeled) {
+                mx_print.lock();
+                cout << "BACKWARD EDGE (" << u << ", " << v << ")" << endl;
+                mx_print.unlock();
                 long edge_flow = edge->getFlow();
                 if (edge_flow > 0) {
                 // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
@@ -716,7 +730,11 @@ public:
                                 this->num_generated.fetch_add(1);
                                 this->mng.unlock();
                                 next_edge->setHasThread(); 
-                                threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
+                                if (next_edge->isResidual()) {
+                                    threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
+                                } else {
+                                    threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
+                                }
                             }
                         }
                     }
