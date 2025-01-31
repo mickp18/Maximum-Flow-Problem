@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    MaxFlowSolverParallel solver = MaxFlowSolverParallel(argv[1]);
+    MaxFlowSolver solver = MaxFlowSolver(argv[1]);
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
     //chrono::high_resolution_clock::time_point t1 = chrono::high_resolution_clock::now();
     solver.solve();

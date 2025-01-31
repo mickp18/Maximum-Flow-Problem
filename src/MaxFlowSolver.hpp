@@ -11,7 +11,7 @@
 
 using namespace std;
 
-class MaxFlowSolverParallel
+class MaxFlowSolver
 {
 private:
     // INPUTS
@@ -43,7 +43,7 @@ private:
 
 public:
     // constructor
-    MaxFlowSolverParallel(string input_file_path)
+    MaxFlowSolver(string input_file_path)
     {
         this->input_file_path = input_file_path;
         this->max_flow = 0;
