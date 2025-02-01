@@ -3,11 +3,11 @@ PARENT_DIR=$(dirname $SCRIPT_DIR) # Get parent directory of SCRIPT_DIR
 
 
 # Get the paths of the program & the exe
-SOLVER=$PARENT_DIR/src/MaxFlowSolverParallel.hpp
+SOLVER=$PARENT_DIR/src/MaxFlowSolverParallelPool.hpp
 EDGE=$PARENT_DIR/src/Edge.hpp
 NODE=$PARENT_DIR/src/Node.hpp
 MAIN=$PARENT_DIR/src/main_pr.cpp
-PROG=$PARENT_DIR/src/MaxFlowSolverP
+PROG=$PARENT_DIR/src/MaxFlowSolverPP
 
 # Compile the program
 g++ $MAIN $SOLVER $NODE $EDGE -o $PROG
