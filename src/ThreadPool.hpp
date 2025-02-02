@@ -12,7 +12,7 @@ std::condition_variable mutex_condition;
 
 std::condition_variable cv_mina;
 std::mutex mx;
-std::atomic<int> n_running(0);
+std::atomic<int> n_running(-1);
 std::atomic<bool> sink_reached(false);
 
 class ThreadPool
@@ -23,6 +23,8 @@ public:
     void Stop();
     bool busy();
     void clearQueue();
+    bool emptyQueue(){
+        return jobs.empty();};
 
 private:
     void ThreadLoop();
@@ -75,7 +77,9 @@ void ThreadPool::ThreadLoop()
                 jobs.pop();
             }
         }
-
+        if (n_running.load() == -1) {
+            n_running.fetch_add(1);
+        }
         n_running.fetch_add(1);
         job();
         n_running.fetch_sub(1);
@@ -86,8 +90,10 @@ void ThreadPool::ThreadLoop()
 void ThreadPool::QueueJob(const std::function<void()> &job)
 {
     {
+        cout << "adding job" << endl;
         std::unique_lock<std::mutex> lock(queue_mutex);
         jobs.push(job);
+        cout << "added job" << endl;
     }
     mutex_condition.notify_one();
 }
