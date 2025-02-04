@@ -10,7 +10,7 @@ MAIN=$PARENT_DIR/src/main_pr.cpp
 PROG=$PARENT_DIR/src/MaxFlowSolverPP
 
 # Compile the program
-g++ $MAIN $SOLVER $NODE $EDGE -o $PROG
+g++ -fsanitize=thread -pthread $MAIN $SOLVER $NODE $EDGE -o  $PROG -g
 
 # $PROG $PARENT_DIR/inputs/first_test.txt $PARENT_DIR/outputs/second_test.txt
 $PROG $PARENT_DIR/inputs/second_test.txt $PARENT_DIR/outputs/second_test.txt
