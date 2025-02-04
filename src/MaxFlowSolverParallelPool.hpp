@@ -112,6 +112,7 @@ private:
 
     std::chrono::time_point<std::chrono::high_resolution_clock> start;  // reference time instant
 
+    atomic<int> pending_jobs{0}; // Track total active jobs
 public:
     // constructor
     MaxFlowSolverParallel(string input_file_path)
@@ -340,7 +341,7 @@ public:
    }
    */
     void thread_function(ThreadPool *thread_pool, int u, int v, Edge *edge) {
-
+        bool enqueued_any = false;
         cout << "thread " << u << " " << v << endl;
         Node* node_u = this->nodes[u];
         Node* node_v = this->nodes[v];
@@ -394,36 +395,53 @@ public:
         }
 
         list<Edge *> neighbour_edges = this->graph[v];
-        cout << "thread " << u << " " << v << " siamo qua" << endl;
+        cout << "thread " << u << " " << v << " neighbours "<< neighbour_edges.size() << endl;
         for (auto next_edge : neighbour_edges)
         {
             // Skip if sink is already reached
             if (this->sink_reached.load())
             {
-                node_v->unlockSharedMutex();
-                node_u->unlockSharedMutex();
+                // node_v->unlockSharedMutex();
+                // node_u->unlockSharedMutex();
                 // cv_mina.notify_all();
+                cout << "thread " << u << " " << v << " sink reached" << endl;
                 break;
             }
 
-            // int next_node = next_edge->isResidual() ? next_edge->getEndNode() : next_edge->getEndNode();
+            // int next_node = next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode();
             int next_node = next_edge->getEndNode();
             // Only explore if:
             // 1. Node isn't labeled yet
             // 2. Edge has remaining capacity
             // 3. We're not at the source
+            cout << "thread " << u << " " << v << " has neighbohour id " << next_node << endl;
+            cout << "thread " << u << " " << v << " has neighbohour edge " << next_edge->getStartNode() << " " << next_edge->getEndNode() << " with capacity " << next_edge->getRemainingCapacity() << endl;
+            cout << "thread " << u << " " << v << " has neighbohour labeled " << nodes[next_node]->isLabeled() << endl;
             if (!this->nodes[next_node]->isLabeled() &&
                 next_edge->getRemainingCapacity() > 0 &&
-                next_node != this->s)
+                next_node != this->s && next_node != u )
             {
+                cout << "ENQUEUING" << endl;
+                unique_lock<mutex> lock(mx);
+                cout << "blocking mx" << endl;
                 int next_u = next_edge->isResidual() ? next_edge->getEndNode() : next_edge->getStartNode();
                 int next_v = next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode();
                 cout << "thread " << u << " " << v << " has neighbohour " << next_u << " " << next_v << endl;
+                this->pending_jobs.fetch_add(1, std::memory_order_relaxed);
                 thread_pool->QueueJob([&thread_pool, this, next_edge]
-                { thread_function(thread_pool,
-                        next_edge->isResidual() ? next_edge->getEndNode() : next_edge->getStartNode(),
-                        next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode(),
-                        next_edge); });
+                    {
+                        thread_function(thread_pool,
+                                next_edge->getStartNode(),
+                                next_edge->getEndNode(),
+                                next_edge); 
+                    });
+                pending_jobs.fetch_sub(1, std::memory_order_relaxed); // 🔥 Decrement after execution
+                // { thread_function(thread_pool,
+                //         next_edge->isResidual() ? next_edge->getEndNode() : next_edge->getStartNode(),
+                //         next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode(),
+                //         next_edge); });
+                cout << "unblocking mx" << endl;
+               
             }
         }
 
@@ -433,13 +451,22 @@ public:
         // cv_mina.notify_all();
         return;
     }
-
+    // if queue not empty, but sink reached -> isprocessing remains true, main doesn't wake up
     bool assign_label(Node *n_u, Node *n_v, Edge *edge) {
-       
+        // check if we are handling residual edges
+        if (edge->isResidual()){
+            Node* temp = n_u;
+            n_u = n_v;
+            n_v = temp;
+        }
         
         bool u_is_labeled = n_u->isLabeled();
         bool v_is_labeled = n_v->isLabeled();
-        long pred_flow = n_u->getLabel()->flow;
+        long pred_flow_u = n_u->getLabel()->flow;
+        long pred_flow_v = n_v->getLabel()->flow;
+        cout << "assigning label"  << n_u->getId() << " " << n_v->getId() << endl;
+        cout << "u is labeled " << u_is_labeled << " v is labeled " << v_is_labeled << endl;
+        cout << "pred flow u " << pred_flow_u << " pred flow v " << pred_flow_v << endl;
 
         if (u_is_labeled && !v_is_labeled)
         {
@@ -448,13 +475,10 @@ public:
             if (remaining_capacity > 0)
             {
                 // assign the label (u, +, l(v)) to node v, Where l(v) = min(l(u), c(u, v) − f(u, v)).
-                long label_flow = min(pred_flow, remaining_capacity);
+                long label_flow = min(pred_flow_u, remaining_capacity);
 
                 n_v->setLabel(n_u->getId(), '+', label_flow);
-                cout << "unlocking " << n_u->getId() << " " << n_v->getId() << endl;
-                n_v->unlockSharedMutex();
-                n_u->unlockSharedMutex();
-                cout << "unlocked " << n_u->getId() << " " << n_v->getId() << endl;
+               cout << "assigned label on" << n_v->getId() << endl;
                 return true;
             }
         }
@@ -463,58 +487,71 @@ public:
         else if (v_is_labeled && !u_is_labeled)
         {
             long edge_flow = edge->getFlow();
-            if (edge_flow > 0)
+            cout << "edge flow " << edge_flow << endl;
+            if (edge_flow < 0)
             {
                 // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
-                long label_flow = std::min(pred_flow, edge_flow);
+                long label_flow = std::min(pred_flow_v, -edge_flow);
                 n_u->setLabel(n_v->getId(), '-', label_flow);
-                cout << "unlocking " << n_u->getId() << " " << n_v->getId() << endl;
-                n_v->unlockSharedMutex();
-                n_u->unlockSharedMutex();
-                cout << "unlocked " << n_u->getId() << " " << n_v->getId() << endl;
+               
+                cout << "assigned label on" << n_u->getId() << endl;
                 return true;   
             }
 
         }
-
+        else {
+            cout << "no label assigned" << endl;
+        }
         return false;
     }
 
     void solve(){
         // create thread pool
-        ThreadPool thread_pool;
-        // std::cout << thread_pool.busy() << std::endl;
-        std::cout << "starting" << std::endl;
-        thread_pool.Start();
-        
         this->nodes[this->s]->setSourceLabel();     // set label of source node
+
+
+        ThreadPool thread_pool;
+      
+        std::cout << "starting" << std::endl;
+        
 
         // save edges of source node
         list<Edge *> source_edges = this->graph[this->s];
         int num_source_edges = source_edges.size();
         //bool start = true;
         n_running.store(-1);
-
+        thread_pool.Start();
         while (true) {
             for (auto edge : source_edges) {
                 if (edge->getRemainingCapacity() > 0) {
-                        
                     int u = edge->getStartNode();
                     int v = edge->getEndNode();
-
+                    cout << "edge u " << u << " v " << v << " with edge remaining capacity " << edge->getRemainingCapacity() << endl;
+                    {
+                    unique_lock<mutex> lock(mx);
+                    pending_jobs.fetch_add(1, std::memory_order_relaxed); 
                     thread_pool.QueueJob([&thread_pool, this, u, v, edge] {
                         thread_function(&thread_pool, u, v, edge); });
+                    }
+                    pending_jobs.fetch_sub(1, std::memory_order_relaxed); // 🔥 Decrement after execution
+                } else {
+                    cout << "edge u " << edge->getStartNode() << " v " << edge->getEndNode() << " with NEGATIVE or 0 edge remaining capacity: " << edge->getRemainingCapacity() << endl;
                 }
             }
             
             // cout << "wait for sink" << endl;
-            // Wait until job found sink  and Wait until all threads completed running task
+            // Wait until job found sink  and Wait until all threads completed running tasks
             {
                 std::unique_lock<std::mutex> lock(mx);
                 cv_mina.wait(lock, [&thread_pool, this]
-                    { return thread_pool.emptyQueue() && n_running.load() == 0; });
+                    { return (!thread_pool.busy() && 
+                     !thread_pool.isProcessing() &&
+                     thread_pool.getActiveThreads() == 0 && this->pending_jobs.load() == 0); });
             }
             cout << "mina woke up" << endl;
+            if (!thread_pool.isProcessing()) {
+                cout << "thread pool wasn't processing" << endl;
+            }
             if (!this->sink_reached.load())
             {
                 cout << "MAIN: sink not found" << endl;
@@ -534,6 +571,7 @@ public:
             cout << "MAIN: resetting sink reached" << endl;
             // destroy queue
             thread_pool.clearQueue();
+
 
             // reset labels
             resetLabels();

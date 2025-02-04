@@ -13,7 +13,7 @@ std::condition_variable mutex_condition;
 std::condition_variable cv_mina;
 std::mutex mx;
 std::atomic<int> n_running(-1);
-std::atomic<bool> sink_reached(false);
+// std::atomic<bool> sink_reached(false);
 
 class ThreadPool
 {
@@ -23,8 +23,10 @@ public:
     void Stop();
     bool busy();
     void clearQueue();
-    bool emptyQueue(){
-        return jobs.empty();};
+    bool isProcessing() const { return is_processing.load(); }
+    int getActiveThreads() const { return active_threads.load(); }
+    bool jobEnqueued() const { return job_enqueued.load(); }
+    void resetJobEnqueued();
 
 private:
     void ThreadLoop();
@@ -35,6 +37,10 @@ private:
     // Allows threads to wait on new jobs or termination std::condition_variable mutex_condition;
     std::vector<std::thread> threads;
     std::queue<std::function<void()>> jobs;
+
+    std::atomic<bool> is_processing{false};
+    std::atomic<int> active_threads{0};
+    std::atomic<bool> job_enqueued{false};
 };
 
 void ThreadPool::Start()
@@ -63,9 +69,8 @@ void ThreadPool::ThreadLoop()
 
             // Wait until there are jobs, termination is requested, or sink is reached
             mutex_condition.wait(lock, [this]()
-                                 { return (!jobs.empty() || should_terminate) && !sink_reached.load(); });
-            // return !jobs.empty() || should_terminate || !sink_reached.load();});
-            //          FALSE    ||       FALSE       ||  TRUE    return true -> wake up
+                                 { return (!jobs.empty() || should_terminate); });
+            
             if (should_terminate)
             {
                 return;
@@ -77,13 +82,23 @@ void ThreadPool::ThreadLoop()
                 jobs.pop();
             }
         }
-        if (n_running.load() == -1) {
-            n_running.fetch_add(1);
+        // if (n_running.load() == -1) {
+        //     n_running.fetch_add(1);
+        // }
+        // n_running.fetch_add(1);
+        // job();
+        // n_running.fetch_sub(1);
+        if (job){
+            is_processing = true;
+            active_threads.fetch_add(1);
+
+            job();
+
+            active_threads.fetch_sub(1);
+            is_processing = active_threads.load() > 0;
+            cv_mina.notify_one();
         }
-        n_running.fetch_add(1);
-        job();
-        n_running.fetch_sub(1);
-        cv_mina.notify_one();
+
     }
 }
 
@@ -93,7 +108,7 @@ void ThreadPool::QueueJob(const std::function<void()> &job)
         cout << "adding job" << endl;
         std::unique_lock<std::mutex> lock(queue_mutex);
         jobs.push(job);
-        cout << "added job" << endl;
+        // cout << "added job" << endl;
     }
     mutex_condition.notify_one();
 }
@@ -126,7 +141,16 @@ void ThreadPool::clearQueue()
 {
     // Clear the jobs queue
     {
-        std::lock_guard<std::mutex> lock(mx);
-        jobs = {};
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        //std::lock_guard<std::mutex> lock(mx);
+        std::queue<std::function<void()>> empty;
+        std::swap(jobs, empty);  // Atomic swap instead of direct assignment
+        // job_enqueued.store(false);
     }
+}
+
+void ThreadPool::resetJobEnqueued()
+{
+    std::unique_lock<std::mutex> lock(queue_mutex);
+    job_enqueued.store(false);
 }
