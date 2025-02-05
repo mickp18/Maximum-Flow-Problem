@@ -64,6 +64,7 @@ void ThreadPool::ThreadLoop()
     while (true)
     {
         std::function<void()> job;
+        bool has_job = false;
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
 
@@ -75,27 +76,26 @@ void ThreadPool::ThreadLoop()
             {
                 return;
             }
-
+        
             if (!jobs.empty())
             {
-                job = jobs.front();
+                job = std::move(jobs.front());
                 jobs.pop();
+                has_job = true;
             }
         }
-        // if (n_running.load() == -1) {
-        //     n_running.fetch_add(1);
-        // }
-        // n_running.fetch_add(1);
-        // job();
-        // n_running.fetch_sub(1);
-        if (job){
+    
+        if (has_job){
             is_processing = true;
             active_threads.fetch_add(1);
-
-            job();
+            if (job) {
+                job();
+            }
 
             active_threads.fetch_sub(1);
             is_processing = active_threads.load() > 0;
+            cout << "MINA WAKE UP FROM LOOP AFTER JOB" << endl;
+            cout << "jobs empty when wake up: " << jobs.empty() << endl;
             cv_mina.notify_one();
         }
 

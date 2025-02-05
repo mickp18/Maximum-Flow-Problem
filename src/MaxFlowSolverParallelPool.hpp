@@ -449,6 +449,7 @@ public:
         node_v->unlockSharedMutex();
         node_u->unlockSharedMutex();
         // cv_mina.notify_all();
+        cout << "thread " << u << " " << v << " done" << endl;
         return;
     }
     // if queue not empty, but sink reached -> isprocessing remains true, main doesn't wake up
@@ -544,11 +545,14 @@ public:
             {
                 std::unique_lock<std::mutex> lock(mx);
                 cv_mina.wait(lock, [&thread_pool, this]
-                    { return (!thread_pool.busy() && 
+                    { cout << "mina is  checking " << !thread_pool.busy() << !thread_pool.isProcessing() << thread_pool.getActiveThreads() << this->pending_jobs.load() <<  endl;
+                    return (!thread_pool.busy() && 
                      !thread_pool.isProcessing() &&
-                     thread_pool.getActiveThreads() == 0 && this->pending_jobs.load() == 0); });
+                     thread_pool.getActiveThreads() == 0 && 
+                     this->pending_jobs.load() == 0); });
             }
             cout << "mina woke up" << endl;
+            cout << "mina woke up since has found " << !thread_pool.busy() << !thread_pool.isProcessing() << thread_pool.getActiveThreads() << this->pending_jobs.load() <<  endl;
             if (!thread_pool.isProcessing()) {
                 cout << "thread pool wasn't processing" << endl;
             }
