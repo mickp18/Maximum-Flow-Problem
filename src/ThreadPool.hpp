@@ -10,7 +10,6 @@
 #include "ThreadLogger.hpp"
 #include "ThreadMonitor.hpp"
 
-
 class ThreadPool
 {
 public:
@@ -52,13 +51,13 @@ void ThreadPool::Start()
     const uint32_t num_threads = 2;
     // std::thread::hardware_concurrency();
     // threads.resize(num_threads);
-   Logger() << "Starting " << num_threads << " threads" << std::endl;
+    Logger() << "Starting " << num_threads << " threads";
     for (uint32_t i = 0; i < num_threads; i++)
     {
         // threads.at(i) = std::thread(&ThreadLoop);
         threads.emplace_back(&ThreadPool::ThreadLoop, this);
     }
-    Logger() << "Started " << threads.size() << " threads" << std::endl;
+    Logger() << "Started " << threads.size() << " threads";
     return;
 }
 
@@ -84,6 +83,7 @@ void ThreadPool::ThreadLoop()
 
             if (!jobs.empty())
             {
+                getMonitor().updateState("getting job");
                 job = std::move(jobs.front());
                 jobs.pop();
                 has_job.store(true);
@@ -94,14 +94,16 @@ void ThreadPool::ThreadLoop()
         {
             is_processing.store(true);
             active_threads.fetch_add(1);
-            if (job) job();
+            if (job)
+                getMonitor().updateState("processing job");
+                job();
             active_threads.fetch_sub(1);
             is_processing.store(active_threads.load() > 0);
             {
                 scoped_lock lock(queue_mutex, completion_mutex);
-                Logger() << "MINA WAKE UP FROM LOOP AFTER JOB" << endl;
-                Logger() << "jobs empty when wake up: " << jobs.empty() << endl;
-               
+                Logger() << "MINA WAKE UP FROM LOOP AFTER JOB";
+                Logger() << "jobs empty when wake up: " << jobs.empty();
+
                 cv_mina.notify_one();
             }
         }
@@ -111,11 +113,12 @@ void ThreadPool::ThreadLoop()
 void ThreadPool::QueueJob(const std::function<void()> &job)
 {
     {
-        Logger() << "adding job" << endl;
+        Logger() << "adding job";
         std::unique_lock<std::mutex> lock(queue_mutex);
-        if (should_terminate.load()) return;  // Prevent job addition after termination
+        if (should_terminate.load())
+            return; // Prevent job addition after termination
         jobs.push(job);
-        Logger() << "added job" << endl;
+        Logger() << "added job";
     }
     mutex_condition.notify_one();
 }
@@ -149,6 +152,7 @@ void ThreadPool::clearQueue()
     // Clear the jobs queue
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
+        getMonitor().updateState("clearing queue");
         std::queue<std::function<void()>> empty;
         std::swap(jobs, empty); // Atomic swap instead of direct assignment
     }
@@ -164,15 +168,26 @@ void ThreadPool::waitForCompletion(atomic<int> *pending_jobs)
 {
     {
         std::unique_lock<std::mutex> lock(completion_mutex);
-        cv_mina.wait(lock, [this, pending_jobs]()
-                     {
-                Logger() << "mina is  checking " << !this->busy() << !this->isProcessing() << this->getActiveThreads() << pending_jobs->load() <<  endl;
-                bool wake_up = (!this->busy() && 
-                !this->isProcessing() &&
-                this->getActiveThreads() == 0 && 
-                pending_jobs->load() == 0); 
-                Logger() << "mina woke up since has found " << !this->busy() << !this->isProcessing() << this->getActiveThreads() << pending_jobs->load() <<  endl; 
-                return wake_up; });
+        while (!cv_mina.wait_for(lock, std::chrono::seconds(5), [this, pending_jobs]()
+
+                                 {
+                    Logger() << "mina is  checking " << !this->busy() << !this->isProcessing() << this->getActiveThreads() << pending_jobs->load();
+                    bool wake_up = (!this->busy() &&
+                                    !this->isProcessing() &&
+                                    this->getActiveThreads() == 0 &&
+                                    pending_jobs->load() == 0);
+                    Logger() << "mina woke up since has found " << !this->busy() << !this->isProcessing() << this->getActiveThreads() << pending_jobs->load();
+                    return wake_up; }))
+        {
+            // If we've waited more than 5 seconds, dump thread states
+            std::cout << "\n=== Thread States after 5s wait ===" << std::endl;
+            monitor.dumpState();
+
+            // Log additional info
+            std::cout << "Pending jobs: " << pending_jobs->load() << std::endl;
+            std::cout << "Queue size: " << jobs.size() << std::endl;
+            std::cout << "Active threads: " << active_threads.load() << std::endl;
+        }
     }
 }
 

@@ -304,15 +304,17 @@ public:
    }
    */
     void thread_function(ThreadPool *thread_pool, int u, int v, Edge *edge) {
+        thread_pool->getMonitor().updateState("Starting task for nodes " + std::to_string(u) + "," + std::to_string(v));
         bool enqueued_any = false;
-        Logger() << "thread " << u << " " << v << endl;
+        Logger() << "thread " << u << " " << v;
         Node* node_u = this->nodes[u];
         Node* node_v = this->nodes[v];
         
         if (this->sink_reached.load()) {
             return;
         }
-        Logger() << "locking " << u << " " << v << endl;
+        thread_pool->getMonitor().updateState("Waiting for locks on nodes " + std::to_string(u) + "," + std::to_string(v));
+        Logger() << "locking " << u << " " << v;
         if (u < v)
         {
             node_u->lockSharedMutex();
@@ -323,7 +325,8 @@ public:
             node_v->lockSharedMutex();
             node_u->lockSharedMutex();
         }
-        Logger() << "locked " << u << " " << v << endl;
+        thread_pool->getMonitor().updateState("Got locks for nodes " + std::to_string(u) + "," + std::to_string(v));
+        Logger() << "locked " << u << " " << v;
 
         
         
@@ -339,7 +342,8 @@ public:
         
         // treat labelling
         if (!this->assign_label(node_u, node_v, edge)){
-            Logger() << "thread " << u << " " << v << " label not assigned" << endl;
+            Logger() << "thread " << u << " " << v << " label not assigned";
+            thread_pool->getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
             node_u->unlockSharedMutex();
             node_v->unlockSharedMutex();
             // if (thread_pool->emptyQueue() && n_running.load() == 1)
@@ -350,21 +354,22 @@ public:
         if (v == this->t) {
             this->sink_reached.store(true);
             // this->augment_flow = augment();
-            Logger() << "thread " << u << " " << v << " sink found" << endl;
+            Logger() << "thread " << u << " " << v << " sink found";
+            thread_pool->getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
             node_v->unlockSharedMutex();
             node_u->unlockSharedMutex();
-            Logger() << "unlocking " << u << " " << v << endl;
+            Logger() << "unlocking " << u << " " << v;
             return;
         }
 
         list<Edge *> neighbour_edges = this->graph[v];
-        Logger() << "thread " << u << " " << v << " neighbours "<< neighbour_edges.size() << endl;
+        Logger() << "thread " << u << " " << v << " neighbours "<< neighbour_edges.size();
         for (auto next_edge : neighbour_edges)
         {
             // Skip if sink is already reached
             if (this->sink_reached.load())
             {
-                Logger() << "thread " << u << " " << v << " sink reached" << endl;
+                Logger() << "thread " << u << " " << v << " sink reached";
                 break;
             }
 
@@ -374,9 +379,9 @@ public:
             // 1. Node isn't labeled yet
             // 2. Edge has remaining capacity
             // 3. We're not at the source
-            Logger() << "thread " << u << " " << v << " has neighbohour id " << next_node << endl;
-            Logger() << "thread " << u << " " << v << " has neighbohour edge " << next_edge->getStartNode() << " " << next_edge->getEndNode() << " with capacity " << next_edge->getRemainingCapacity() << endl;
-            Logger() << "thread " << u << " " << v << " has neighbohour labeled " << nodes[next_node]->isLabeled() << endl;
+            Logger() << "thread " << u << " " << v << " has neighbohour id " << next_node;
+            Logger() << "thread " << u << " " << v << " has neighbohour edge " << next_edge->getStartNode() << " " << next_edge->getEndNode() << " with capacity " << next_edge->getRemainingCapacity();
+            Logger() << "thread " << u << " " << v << " has neighbohour labeled " << nodes[next_node]->isLabeled();
             if (!this->nodes[next_node]->isLabeled() &&
                 next_edge->getRemainingCapacity() > 0 &&
                 next_node != this->s && next_node != u )
@@ -384,7 +389,8 @@ public:
             
                 int next_u = next_edge->isResidual() ? next_edge->getEndNode() : next_edge->getStartNode();
                 int next_v = next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode();
-                Logger() << "thread " << u << " " << v << " has neighbohour " << next_u << " " << next_v << endl;
+                thread_pool->getMonitor().updateState("Adding neighbor tasks for node " + std::to_string(v));
+                Logger() << "thread " << u << " " << v << " has neighbohour " << next_u << " " << next_v;
                 this->pending_jobs.fetch_add(1, std::memory_order_relaxed);
                 thread_pool->QueueJob([&thread_pool, this, next_edge]
                     {
@@ -399,11 +405,14 @@ public:
             }
         }
 
-        Logger() << "unlocking " << u << " " << v << endl;
+        Logger() << "unlocking " << u << " " << v;
+        thread_pool->getMonitor().updateState("Unlocking nodes " + std::to_string(u) + "," + std::to_string(v));
         node_v->unlockSharedMutex();
         node_u->unlockSharedMutex();
- 
-        Logger() << "thread " << u << " " << v << " done" << endl;
+        thread_pool->getMonitor().updateState("Unlocked nodes " + std::to_string(u) + "," + std::to_string(v));
+        
+        Logger() << "thread " << u << " " << v << " done";
+        thread_pool->getMonitor().updateState("Thread " + std::to_string(u) + "," + std::to_string(v) + " done");
         return;
     }
     // if queue not empty, but sink reached -> isprocessing remains true, main doesn't wake up
@@ -419,9 +428,9 @@ public:
         bool v_is_labeled = n_v->isLabeled();
         long pred_flow_u = n_u->getLabel()->flow;
         long pred_flow_v = n_v->getLabel()->flow;
-        Logger() << "assigning label"  << n_u->getId() << " " << n_v->getId() << endl;
-        Logger() << "u is labeled " << u_is_labeled << " v is labeled " << v_is_labeled << endl;
-        Logger() << "pred flow u " << pred_flow_u << " pred flow v " << pred_flow_v << endl;
+        Logger() << "assigning label"  << n_u->getId() << " " << n_v->getId();
+        Logger() << "u is labeled " << u_is_labeled << " v is labeled " << v_is_labeled;
+        Logger() << "pred flow u " << pred_flow_u << " pred flow v " << pred_flow_v;
 
         if (u_is_labeled && !v_is_labeled)
         {
@@ -433,7 +442,7 @@ public:
                 long label_flow = min(pred_flow_u, remaining_capacity);
 
                 n_v->setLabel(n_u->getId(), '+', label_flow);
-               Logger() << "assigned label on" << n_v->getId() << endl;
+               Logger() << "assigned label on" << n_v->getId();
                 return true;
             }
         }
@@ -442,20 +451,20 @@ public:
         else if (v_is_labeled && !u_is_labeled)
         {
             long edge_flow = edge->getFlow();
-            Logger() << "edge flow " << edge_flow << endl;
+            Logger() << "edge flow " << edge_flow;
             if (edge_flow < 0)
             {
                 // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
                 long label_flow = std::min(pred_flow_v, -edge_flow);
                 n_u->setLabel(n_v->getId(), '-', label_flow);
                
-                Logger() << "assigned label on" << n_u->getId() << endl;
+                Logger() << "assigned label on" << n_u->getId();
                 return true;   
             }
 
         }
         else {
-            Logger() << "no label assigned" << endl;
+            Logger() << "no label assigned" ;
         }
         return false;
     }
@@ -468,7 +477,7 @@ public:
 
         ThreadPool thread_pool;
       
-        Logger() << "starting" << std::endl;
+        Logger() << "starting";
         
 
         // save edges of source node
@@ -482,7 +491,7 @@ public:
                 if (edge->getRemainingCapacity() > 0) {
                     int u = edge->getStartNode();
                     int v = edge->getEndNode();
-                    Logger() << "edge u " << u << " v " << v << " with edge remaining capacity " << edge->getRemainingCapacity() << endl;
+                    Logger() << "edge u " << u << " v " << v << " with edge remaining capacity " << edge->getRemainingCapacity();
                     {
                     // unique_lock<mutex> lock(mx);
                     pending_jobs.fetch_add(1, std::memory_order_relaxed); 
@@ -491,12 +500,16 @@ public:
                     }
                     pending_jobs.fetch_sub(1, std::memory_order_relaxed); // 🔥 Decrement after execution
                 } else {
-                    Logger() << "edge u " << edge->getStartNode() << " v " << edge->getEndNode() << " with NEGATIVE or 0 edge remaining capacity: " << edge->getRemainingCapacity() << endl;
+                    Logger() << "edge u " << edge->getStartNode() << " v " << edge->getEndNode() << " with NEGATIVE or 0 edge remaining capacity: " << edge->getRemainingCapacity();
                 }
             }
-            
+
             // cout << "wait for sink" << endl;
             // Wait until job found sink  and Wait until all threads completed running tasks
+                 
+
+            
+            thread_pool.getMonitor().dumpState();
             thread_pool.waitForCompletion(&pending_jobs);
 
             Logger() << "mina woke up" ;
