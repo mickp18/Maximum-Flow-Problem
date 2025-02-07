@@ -310,7 +310,7 @@ public:
         Node* node_u = this->nodes[u];
         Node* node_v = this->nodes[v];
         
-        if (this->sink_reached.load()) {
+        if (this->sink_reached.load() || v == this->s) {
             return;
         }
         thread_pool->getMonitor().updateState("Waiting for locks on nodes " + std::to_string(u) + "," + std::to_string(v));
@@ -327,18 +327,6 @@ public:
         }
         thread_pool->getMonitor().updateState("Got locks for nodes " + std::to_string(u) + "," + std::to_string(v));
         Logger() << "locked " << u << " " << v;
-
-        
-        
-       
-
-        // if (node_v->isSource() || (this-node_u->isLabeled() && node_v->isLabeled())) {
-        //     cout << "thread " << u << " " << v << " sink reached" << endl;
-        //     node_v->unlockSharedMutex();
-        //     node_u->unlockSharedMutex();
-        //     cv_mina.notify_all();
-        //     return;
-        // }
         
         // treat labelling
         if (!this->assign_label(node_u, node_v, edge)){
@@ -346,8 +334,6 @@ public:
             thread_pool->getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
             node_u->unlockSharedMutex();
             node_v->unlockSharedMutex();
-            // if (thread_pool->emptyQueue() && n_running.load() == 1)
-            //     cv_mina.notify_all();
             return;
         }
 
@@ -389,7 +375,7 @@ public:
             
                 int next_u = next_edge->isResidual() ? next_edge->getEndNode() : next_edge->getStartNode();
                 int next_v = next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode();
-                thread_pool->getMonitor().updateState("Adding neighbor tasks for node " + std::to_string(v));
+                // thread_pool->getMonitor().updateState("Adding neighbor tasks for node " + std::to_string(v));
                 Logger() << "thread " << u << " " << v << " has neighbohour " << next_u << " " << next_v;
                 this->pending_jobs.fetch_add(1, std::memory_order_relaxed);
                 thread_pool->QueueJob([&thread_pool, this, next_edge]
@@ -406,7 +392,7 @@ public:
         }
 
         Logger() << "unlocking " << u << " " << v;
-        thread_pool->getMonitor().updateState("Unlocking nodes " + std::to_string(u) + "," + std::to_string(v));
+        // thread_pool->getMonitor().updateState("Unlocking nodes " + std::to_string(u) + "," + std::to_string(v));
         node_v->unlockSharedMutex();
         node_u->unlockSharedMutex();
         thread_pool->getMonitor().updateState("Unlocked nodes " + std::to_string(u) + "," + std::to_string(v));
@@ -491,16 +477,16 @@ public:
                 if (edge->getRemainingCapacity() > 0) {
                     int u = edge->getStartNode();
                     int v = edge->getEndNode();
-                    Logger() << "edge u " << u << " v " << v << " with edge remaining capacity " << edge->getRemainingCapacity();
+                    //Logger() << "edge u " << u << " v " << v << " with edge remaining capacity " << edge->getRemainingCapacity();
                     {
                     // unique_lock<mutex> lock(mx);
                     pending_jobs.fetch_add(1, std::memory_order_relaxed); 
                     thread_pool.QueueJob([&thread_pool, this, u, v, edge] {
                         thread_function(&thread_pool, u, v, edge); });
                     }
-                    pending_jobs.fetch_sub(1, std::memory_order_relaxed); // 🔥 Decrement after execution
+                    pending_jobs.fetch_sub(1, std::memory_order_relaxed); 
                 } else {
-                    Logger() << "edge u " << edge->getStartNode() << " v " << edge->getEndNode() << " with NEGATIVE or 0 edge remaining capacity: " << edge->getRemainingCapacity();
+                    //Logger() << "edge u " << edge->getStartNode() << " v " << edge->getEndNode() << " with NEGATIVE or 0 edge remaining capacity: " << edge->getRemainingCapacity();
                 }
             }
 
@@ -543,6 +529,11 @@ public:
 
             // wake up threads
             Logger() << "wake up threads";
+            // check that every one is waiting and nothing in queue
+            cout << "pending jobs: " << pending_jobs.load() << endl;
+            cout << "is processing: " <<  thread_pool.isProcessing() << endl;
+            cout << "is queue empty: " << thread_pool.busy() << endl;
+            cout << "active threads: " << thread_pool.getActiveThreads() << endl;
             thread_pool.notify();
         }
 
