@@ -49,16 +49,16 @@ private:
 void ThreadPool::Start()
 {
     // Max # of threads the system supports
-    const int num_threads = 1;
+    const int num_threads = std::thread::hardware_concurrency();
     cout << "THREADS " << num_threads << endl;
     // std::thread::hardware_concurrency();
     // threads.resize(num_threads);
-    Logger() << "Starting " << num_threads << " threads";
+    // Logger() << "Starting " << num_threads << " threads";
     for (uint32_t i = 1; i < num_threads+1; i++)
     {
         threads.emplace_back(&ThreadPool::ThreadLoop, this);
     }
-    Logger() << "Started " << threads.size() << " threads";
+    // Logger() << "Started " << threads.size() << " threads";
     return;
 }
 
@@ -70,11 +70,13 @@ void ThreadPool::ThreadLoop()
         //std::atomic<bool> has_job{false};
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
-            Logger() << "locked queue mutex";
+            // Logger() << "locked queue mutex";
 
             mutex_condition.wait(lock, [this]()
-                                 {Logger() << "thread IS WAITING seeing " << !jobs.empty() << should_terminate.load(); return (!jobs.empty() || should_terminate.load()); });
-            Logger() << "thread IS NOT WAITING seeing " << !jobs.empty() << should_terminate.load();
+                                 {
+            // Logger() << "thread IS WAITING seeing " << !jobs.empty() << should_terminate.load(); 
+            return (!jobs.empty() || should_terminate.load()); });
+            // Logger() << "thread IS NOT WAITING seeing " << !jobs.empty() << should_terminate.load();
 
             if (should_terminate.load() && jobs.empty()) // could check also if jobs.empty()
             {
@@ -86,7 +88,7 @@ void ThreadPool::ThreadLoop()
             jobs.pop();
             // has_job.store(true);
         
-            Logger() << "unlcokoed queue mutex";
+            // Logger() << "unlcokoed queue mutex";
         }
 
         job();
@@ -106,16 +108,16 @@ void ThreadPool::ThreadLoop()
 void ThreadPool::QueueJob(const std::function<void()> &job)
 {
     {
-        Logger() << "adding job";
-        cout << "check if queue mutex is locked" << endl;
+        // Logger() << "adding job";
+        // cout << "check if queue mutex is locked" << endl;
         std::lock_guard<std::mutex> lock(queue_mutex);
             
-        cout << "i locked the queue mutex" << endl;
+        // cout << "i locked the queue mutex" << endl;
         // if (should_terminate.load())
         //     return; // Prevent job addition after termination
         jobs.push(job);
         active_tasks.fetch_add(1);
-        Logger() << "added job";
+        // Logger() << "added job";
  
     }
     mutex_condition.notify_one();
@@ -126,9 +128,9 @@ bool ThreadPool::busy()
     bool poolbusy;
     {   
         std::unique_lock<std::mutex> lock(queue_mutex);
-        Logger() << "locked queue mutex";
+        // Logger() << "locked queue mutex";
         poolbusy = !jobs.empty();
-        Logger() << "unlocked queue mutex";
+        // Logger() << "unlocked queue mutex";
     }
     return poolbusy;
 }
@@ -137,9 +139,9 @@ void ThreadPool::Stop()
 {
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
-        Logger() << "locked queue mutex";
+        // Logger() << "locked queue mutex";
         should_terminate.store(true);
-        Logger() << "unlocked queue mutex";
+        // Logger() << "unlocked queue mutex";
     }
     mutex_condition.notify_all();
     for (std::thread &active_thread : threads)
@@ -154,11 +156,11 @@ void ThreadPool::clearQueue()
     // Clear the jobs queue
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
-        Logger() << "locked queue mutex";
+        // Logger() << "locked queue mutex";
         getMonitor().updateState("clearing queue");
         std::queue<std::function<void()>> empty;
         std::swap(jobs, empty); // Atomic swap instead of direct assignment
-        Logger() << "unlocked queue mutex";
+        // Logger() << "unlocked queue mutex";
     }
 }
 
