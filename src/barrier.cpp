@@ -1,92 +1,137 @@
-#include <iostream>
-#include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <queue>
 #include <vector>
+#include <thread>
+#include <functional>
 #include <atomic>
+#include <iostream>
 
-std::atomic<long> num_threads(0);
+class ThreadPool
+{
+private:
+    std::vector<std::thread> workers;
+    std::queue<std::function<void()>> tasks;
 
-class Barrier {
+    std::mutex queue_mutex;
+    std::condition_variable queue_condition;
+
+    std::mutex completion_mutex;
+    std::condition_variable completion_condition;
+
+    // Single counter for all tasks (both queued and executing)
+    std::atomic<size_t> total_tasks{0};
+
+    bool stop_flag{false};
+
 public:
-    Barrier(): count(0),worker_done(false){}
+    ThreadPool(size_t num_threads)
+    {
+        for (size_t i = 0; i < num_threads; ++i)
+        {
+            workers.emplace_back([this]
+                                 { thread_loop(); });
+        }
+    }
 
-    
-    void arrive_and_wait(bool is_worker) {
-        long current_num_threads = num_threads.load();
-        std::unique_lock<std::mutex> lock(mtx);
+    void queue_job(std::function<void()> job)
+    {
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex);
+            tasks.push(job);
+            total_tasks++; // Increment counter for new task
+        }
+        queue_condition.notify_one();
+    }
 
-        if (is_worker) {
-            // Worker waits for all other threads to arrive at the barrier
-            cv.wait(lock, [this]() { return count == num_threads - 1; });
+    void wait_for_completion()
+    {
+        std::unique_lock<std::mutex> lock(completion_mutex);
+        completion_condition.wait(lock, [this]
+                                  {
+            // Only complete when no tasks are queued or running
+            return tasks.empty() && total_tasks == 0; });
+    }
 
-            // Worker performs its work
-            std::cout << "Worker is performing its task..." << std::endl;
-            worker_done = true;
+    void thread_loop()
+    {
+        while (true)
+        {
+            std::function<void()> job;
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex);
+                queue_condition.wait(lock, [this]
+                                     { return !tasks.empty() || stop_flag; });
 
-            // Notify all other threads
-            cv.notify_all();
-        } else {
-            // Increment the count
-            ++count;
+                if (stop_flag && tasks.empty())
+                {
+                    return;
+                }
 
-            // If the number of blocked threads equals total threads - 1, notify the worker
-            if (count == num_threads - 1) {
-                cv.notify_one(); // Wake up the worker thread
+                job = std::move(tasks.front());
+                tasks.pop();
             }
 
-            // Wait for the worker to finish its work
-            cv.wait(lock, [this]() { return worker_done; });
+            // Execute the job - it might add more tasks!
+            job();
 
-            // Decrement count for reuse of the barrier
-            --count;
-
-            // Notify other threads in case they are waiting
-            if (count == 0) {
-                worker_done = false; // Reset for the next cycle
+            // Decrement counter after job completes
+            size_t remaining = --total_tasks;
+            if (remaining == 0)
+            {
+                // Need to check queue under lock to avoid race
+                std::lock_guard<std::mutex> lock(queue_mutex);
+                if (tasks.empty())
+                {
+                    std::lock_guard<std::mutex> completion_lock(completion_mutex);
+                    completion_condition.notify_all();
+                }
             }
         }
     }
 
-private:
-    size_t count;
-    bool worker_done;
-    std::mutex mtx;
-    std::condition_variable cv;
+    void stop()
+    {
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex);
+            stop_flag = true;
+        }
+        queue_condition.notify_all();
+
+        for (auto &worker : workers)
+        {
+            worker.join();
+        }
+    }
 };
 
-void thread_function(Barrier &barrier, bool is_worker) {
-    while(true){
-        barrier.arrive_and_wait(is_worker);
-        if (!is_worker) {
-            std::cout << "Other thread is proceeding after worker's task." << std::endl;
-        }
-        else {
-            std::cout << "I'm slave thread performing other tasks...." << endl;
-            // thread::this_thread::sleep_for(1);
-            cout << "Finished my task" << endl;
-        }
+void recursive_task(int depth, ThreadPool &pool)
+{
+    std::cout << std::this_thread::get_id() << " " << depth << std::endl;
+    if (depth > 0)
+    {
+        pool.queue_job([&pool, depth]()
+                       { recursive_task(depth - 1, pool); });
+        pool.queue_job([&pool, depth]()
+                       { recursive_task(depth - 1, pool); });
     }
-}
+    return;
+};
 
-int main() {
-    // const size_t num_threads = 5; // Total threads (1 worker + 4 others)
-    Barrier barrier();
+int main()
+{
+    ThreadPool pool(4);
 
-    std::vector<std::thread> threads;
 
-    // Create the worker thread
-    threads.emplace_back(thread_function, std::ref(barrier), true);
+    for (int i = 0; i < 4; i++){
+        pool.queue_job([&]()
+                       { recursive_task(3, pool); });
+    
+        pool.wait_for_completion(); // Will wait for ALL generated tasks
+        std::cout << "DONE" << std::endl;
 
-    // Create the other threads
-    for (size_t i = 0; i < num_threads - 1; ++i) {
-        threads.emplace_back(thread_function, std::ref(barrier), false);
     }
-
-    // Join all threads
-    for (auto &t : threads) {
-        t.join();
-    }
-
+    // Start with one task that will generate more
+    pool.stop();
     return 0;
 }

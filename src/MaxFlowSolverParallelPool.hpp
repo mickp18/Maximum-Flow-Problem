@@ -303,8 +303,8 @@ public:
        - return
    }
    */
-    void thread_function(ThreadPool *thread_pool, int u, int v, Edge *edge) {
-        thread_pool->getMonitor().updateState("Starting task for nodes " + std::to_string(u) + "," + std::to_string(v));
+    void thread_function(ThreadPool &thread_pool, int u, int v, Edge *edge) {
+        thread_pool.getMonitor().updateState("Starting task for nodes " + std::to_string(u) + "," + std::to_string(v));
         bool enqueued_any = false;
         Logger() << "thread " << u << " " << v;
         Node* node_u = this->nodes[u];
@@ -313,7 +313,7 @@ public:
         if (this->sink_reached.load() || v == this->s) {
             return;
         }
-        thread_pool->getMonitor().updateState("Waiting for locks on nodes " + std::to_string(u) + "," + std::to_string(v));
+        thread_pool.getMonitor().updateState("Waiting for locks on nodes " + std::to_string(u) + "," + std::to_string(v));
         Logger() << "locking " << u << " " << v;
         if (u < v)
         {
@@ -325,13 +325,13 @@ public:
             node_v->lockSharedMutex();
             node_u->lockSharedMutex();
         }
-        thread_pool->getMonitor().updateState("Got locks for nodes " + std::to_string(u) + "," + std::to_string(v));
+        thread_pool.getMonitor().updateState("Got locks for nodes " + std::to_string(u) + "," + std::to_string(v));
         Logger() << "locked " << u << " " << v;
         
         // treat labelling
         if (!this->assign_label(node_u, node_v, edge)){
             Logger() << "thread " << u << " " << v << " label not assigned";
-            thread_pool->getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
+            thread_pool.getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
             node_u->unlockSharedMutex();
             node_v->unlockSharedMutex();
             return;
@@ -341,7 +341,7 @@ public:
             this->sink_reached.store(true);
             // this->augment_flow = augment();
             Logger() << "thread " << u << " " << v << " sink found";
-            thread_pool->getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
+            thread_pool.getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
             node_v->unlockSharedMutex();
             node_u->unlockSharedMutex();
             Logger() << "unlocking " << u << " " << v;
@@ -377,15 +377,15 @@ public:
                 int next_v = next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode();
                 // thread_pool->getMonitor().updateState("Adding neighbor tasks for node " + std::to_string(v));
                 Logger() << "thread " << u << " " << v << " has neighbohour " << next_u << " " << next_v;
-                this->pending_jobs.fetch_add(1, std::memory_order_relaxed);
-                thread_pool->QueueJob([&thread_pool, this, next_edge]
+                // this->pending_jobs.fetch_add(1, std::memory_order_relaxed);
+                thread_pool.QueueJob([&thread_pool, this, next_edge]
                     {
                         thread_function(thread_pool,
                                 next_edge->getStartNode(),
                                 next_edge->getEndNode(),
                                 next_edge); 
                     });
-                pending_jobs.fetch_sub(1, std::memory_order_relaxed); // 🔥 Decrement after execution
+                // pending_jobs.fetch_sub(1, std::memory_order_relaxed); // 🔥 Decrement after execution
                
                
             }
@@ -395,10 +395,10 @@ public:
         // thread_pool->getMonitor().updateState("Unlocking nodes " + std::to_string(u) + "," + std::to_string(v));
         node_v->unlockSharedMutex();
         node_u->unlockSharedMutex();
-        thread_pool->getMonitor().updateState("Unlocked nodes " + std::to_string(u) + "," + std::to_string(v));
+        thread_pool.getMonitor().updateState("Unlocked nodes " + std::to_string(u) + "," + std::to_string(v));
         
         Logger() << "thread " << u << " " << v << " done";
-        thread_pool->getMonitor().updateState("Thread " + std::to_string(u) + "," + std::to_string(v) + " done");
+        thread_pool.getMonitor().updateState("Thread " + std::to_string(u) + "," + std::to_string(v) + " done");
         return;
     }
     // if queue not empty, but sink reached -> isprocessing remains true, main doesn't wake up
@@ -482,7 +482,7 @@ public:
                     // unique_lock<mutex> lock(mx);
                     pending_jobs.fetch_add(1, std::memory_order_relaxed); 
                     thread_pool.QueueJob([&thread_pool, this, u, v, edge] {
-                        thread_function(&thread_pool, u, v, edge); });
+                        thread_function(thread_pool, u, v, edge); });
                     }
                     pending_jobs.fetch_sub(1, std::memory_order_relaxed); 
                 } else {
@@ -496,12 +496,9 @@ public:
 
             
             thread_pool.getMonitor().dumpState();
-            thread_pool.waitForCompletion(&pending_jobs);
+            thread_pool.waitForCompletion();
 
             Logger() << "mina woke up" ;
-            if (!thread_pool.isProcessing()) {
-                Logger() << "thread pool wasn't processing";
-            }
             if (!this->sink_reached.load())
             {
                 Logger() << "MAIN: sink not found";
@@ -531,7 +528,7 @@ public:
             Logger() << "wake up threads";
             // check that every one is waiting and nothing in queue
             cout << "pending jobs: " << pending_jobs.load() << endl;
-            cout << "is processing: " <<  thread_pool.isProcessing() << endl;
+            // cout << "is processing: " <<  thread_pool.isProcessing() << endl;
             cout << "is queue empty: " << thread_pool.busy() << endl;
             cout << "active threads: " << thread_pool.getActiveThreads() << endl;
             thread_pool.notify();

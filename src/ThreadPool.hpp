@@ -17,11 +17,11 @@ public:
     void Stop();
     bool busy();
     void clearQueue();
-    bool isProcessing() const { return is_processing.load(); }
-    int getActiveThreads() const { return active_threads.load(); }
-    bool jobEnqueued() const { return job_enqueued.load(); }
-    void resetJobEnqueued();
-    void waitForCompletion(atomic<int> *pending_jobs);
+    // bool isProcessing() const { return is_processing.load(); }
+    int getActiveThreads() const { return active_tasks.load(); }
+    // bool jobEnqueued() const { return job_enqueued.load(); }
+    // void resetJobEnqueued();
+    void waitForCompletion();
     void notify();
     ThreadMonitor &getMonitor() { return monitor; }
 
@@ -41,10 +41,8 @@ private:
     std::condition_variable cv_completion;
     std::mutex completion_mutex;
 
-    std::atomic<bool> is_processing{false};
-
-    std::atomic<int> active_threads{0};
-    std::atomic<int> job_enqueued{0};
+    std::atomic<int> active_tasks{0};
+ 
     ThreadMonitor monitor;
 };
 
@@ -69,7 +67,7 @@ void ThreadPool::ThreadLoop()
     while (true)
     {
         std::function<void()> job;
-        std::atomic<bool> has_job{false};
+        //std::atomic<bool> has_job{false};
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
             Logger() << "locked queue mutex";
@@ -78,40 +76,30 @@ void ThreadPool::ThreadLoop()
                                  {Logger() << "thread IS WAITING seeing " << !jobs.empty() << should_terminate.load(); return (!jobs.empty() || should_terminate.load()); });
             Logger() << "thread IS NOT WAITING seeing " << !jobs.empty() << should_terminate.load();
 
-            if (should_terminate.load())
+            if (should_terminate.load() && jobs.empty()) // could check also if jobs.empty()
             {
                 return;
             }
-
-            if (!jobs.empty())
-            {
-                getMonitor().updateState("getting job");
-                job = std::move(jobs.front());
-                jobs.pop();
-                has_job.store(true);
-            }
+         
+            getMonitor().updateState("getting job");
+            job = std::move(jobs.front());
+            jobs.pop();
+            // has_job.store(true);
+        
             Logger() << "unlcokoed queue mutex";
         }
 
-        if (has_job.load())
-        {
-            is_processing.store(true);
-            active_threads.fetch_add(1);
-            if (job)
-                getMonitor().updateState("processing job");
-                job();
-            active_threads.fetch_sub(1);
-            is_processing.store(active_threads.load() > 0);
+        job();
+        size_t remaining = --active_tasks;
+        if (remaining == 0){
+            lock_guard<mutex> lock(queue_mutex);
+            if (jobs.empty())
             {
-                scoped_lock lock(queue_mutex, completion_mutex);
-                Logger() << "locked queue mutex";
-                Logger() << "MINA WAKE UP FROM LOOP AFTER JOB";
-                Logger() << "jobs empty when wake up: " << jobs.empty();
-
-                Logger() << "locked queue mutex";
+                lock_guard<std::mutex> completion_lock(completion_mutex);
                 cv_completion.notify_one();
             }
         }
+        
     }
 }
 
@@ -120,12 +108,13 @@ void ThreadPool::QueueJob(const std::function<void()> &job)
     {
         Logger() << "adding job";
         cout << "check if queue mutex is locked" << endl;
-        std::unique_lock<std::mutex> lock(queue_mutex);
+        std::lock_guard<std::mutex> lock(queue_mutex);
             
         cout << "i locked the queue mutex" << endl;
-        if (should_terminate.load())
-            return; // Prevent job addition after termination
+        // if (should_terminate.load())
+        //     return; // Prevent job addition after termination
         jobs.push(job);
+        active_tasks.fetch_add(1);
         Logger() << "added job";
  
     }
@@ -173,18 +162,18 @@ void ThreadPool::clearQueue()
     }
 }
 
-void ThreadPool::resetJobEnqueued()
-{
-    std::unique_lock<std::mutex> lock(queue_mutex);
-    job_enqueued.store(false);
-}
+// void ThreadPool::resetJobEnqueued()
+// {
+//     std::unique_lock<std::mutex> lock(queue_mutex);
+//     job_enqueued.store(false);
+// }
 
-void ThreadPool::waitForCompletion(atomic<int> *pending_jobs)
+void ThreadPool::waitForCompletion()
 {
     std::unique_lock<std::mutex> lock(completion_mutex);
     {
         getMonitor().updateState("waiting for completion");
-        cv_completion.wait(lock, [this, pending_jobs]() { return   !busy() && !pending_jobs->load() && active_threads.load() == 0; });
+        cv_completion.wait(lock, [this]() { return  jobs.empty() && active_tasks.load() == 0; });
 
     }
     getMonitor().updateState("done waiting for completion");
