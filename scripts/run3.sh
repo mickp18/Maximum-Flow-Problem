@@ -8,9 +8,12 @@ EDGE=$PARENT_DIR/src/Edge.hpp
 NODE=$PARENT_DIR/src/Node.hpp
 MAIN=$PARENT_DIR/src/main_pr.cpp
 PROG=$PARENT_DIR/src/MaxFlowSolverPP
+LOG=$PARENT_DIR/src/ThreadLogger.hpp
+MON=$PARENT_DIR/src/ThreadMonitor.hpp
 
 # Compile the program
-g++ -fsanitize=thread -pthread $MAIN $SOLVER $NODE $EDGE -o  $PROG -g
+g++  $MAIN $SOLVER $NODE $EDGE $LOG $MON -o  $PROG -g
+# g++ -fsanitize=thread -pthread $MAIN $SOLVER $NODE $EDGE $LOG $MON -o  $PROG -g 
 
 # $PROG $PARENT_DIR/inputs/first_test.txt $PARENT_DIR/outputs/second_test.txt
 $PROG $PARENT_DIR/inputs/second_test.txt $PARENT_DIR/outputs/second_test.txt

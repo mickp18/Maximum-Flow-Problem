@@ -19,17 +19,17 @@ private:
 public:
     void updateState(const std::string &state)
     {
-        std::lock_guard<std::mutex> lock(state_mutex);
-        thread_states[std::this_thread::get_id()] = state;
+/*         std::lock_guard<std::mutex> lock(state_mutex);
+        thread_states[std::this_thread::get_id()] = state; */
     }
 
     void dumpState()
     {
-        std::lock_guard<std::mutex> lock(state_mutex);
+/*         std::lock_guard<std::mutex> lock(state_mutex);
         Logger() << "=== Thread States ===";
         for (const auto &[thread_id, state] : thread_states)
         {
             Logger() << "Thread " << thread_id << ": " << state;
-        }
+        } */
     }
 };
