@@ -23,7 +23,7 @@ public:
     // void resetJobEnqueued();
     void waitForCompletion();
     void notify();
-    ThreadMonitor &getMonitor() { return monitor; }
+    // ThreadMonitor &getMonitor() { return monitor; }
 
 private:
     void ThreadLoop();
@@ -83,7 +83,7 @@ void ThreadPool::ThreadLoop()
                 return;
             }
          
-            getMonitor().updateState("getting job");
+            // getMonitor().updateState("getting job");
             job = std::move(jobs.front());
             jobs.pop();
             // has_job.store(true);
@@ -157,28 +157,24 @@ void ThreadPool::clearQueue()
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
         // Logger() << "locked queue mutex";
-        getMonitor().updateState("clearing queue");
+        // getMonitor().updateState("clearing queue");
         std::queue<std::function<void()>> empty;
         std::swap(jobs, empty); // Atomic swap instead of direct assignment
         // Logger() << "unlocked queue mutex";
     }
 }
 
-// void ThreadPool::resetJobEnqueued()
-// {
-//     std::unique_lock<std::mutex> lock(queue_mutex);
-//     job_enqueued.store(false);
-// }
+
 
 void ThreadPool::waitForCompletion()
 {
     std::unique_lock<std::mutex> lock(completion_mutex);
     {
-        getMonitor().updateState("waiting for completion");
+        // getMonitor().updateState("waiting for completion");
         cv_completion.wait(lock, [this]() { return  jobs.empty() && active_tasks.load() == 0; });
 
     }
-    getMonitor().updateState("done waiting for completion");
+    // getMonitor().updateState("done waiting for completion");
 }
 
 void ThreadPool::notify()

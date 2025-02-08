@@ -125,7 +125,7 @@ public:
         vector<list<Edge *>> graph(this->n);
 
         this->nodes = vector<Node *>(this->n);
-        // cout << "nodes size: " << nodes.size() << endl;
+        // cout << "initialized nodes vector with size: " << nodes.size() << endl;
 
         int i = 0;
         while (getline(file, line)) {
@@ -162,7 +162,7 @@ public:
             // cout << "after end node" << endl;
         }
         // cout << "hey" << endl;
-        // cout << "Graph read with nodes: " << endl;
+        cout << "Graph read  " << endl;
         for (Node* nd : this->nodes) {
           //   cout << nd->getId() << " ";
         }
@@ -304,7 +304,7 @@ public:
    }
    */
     void thread_function(ThreadPool &thread_pool, int u, int v, Edge *edge) {
-        thread_pool.getMonitor().updateState("Starting task for nodes " + std::to_string(u) + "," + std::to_string(v));
+        // thread_pool.getMonitor().updateState("Starting task for nodes " + std::to_string(u) + "," + std::to_string(v));
         bool enqueued_any = false;
        // Logger() << "thread " << u << " " << v;
         Node* node_u = this->nodes[u];
@@ -313,7 +313,7 @@ public:
         if (this->sink_reached.load() || v == this->s) {
             return;
         }
-        thread_pool.getMonitor().updateState("Waiting for locks on nodes " + std::to_string(u) + "," + std::to_string(v));
+        // thread_pool.getMonitor().updateState("Waiting for locks on nodes " + std::to_string(u) + "," + std::to_string(v));
        //  Logger() << "locking " << u << " " << v;
         if (u < v)
         {
@@ -325,13 +325,13 @@ public:
             node_v->lockSharedMutex();
             node_u->lockSharedMutex();
         }
-        thread_pool.getMonitor().updateState("Got locks for nodes " + std::to_string(u) + "," + std::to_string(v));
+        // thread_pool.getMonitor().updateState("Got locks for nodes " + std::to_string(u) + "," + std::to_string(v));
        //  Logger() << "locked " << u << " " << v;
         
         // treat labelling
         if (!this->assign_label(node_u, node_v, edge)){
            //  Logger() << "thread " << u << " " << v << " label not assigned";
-            thread_pool.getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
+            // thread_pool.getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
             node_u->unlockSharedMutex();
             node_v->unlockSharedMutex();
             return;
@@ -341,7 +341,7 @@ public:
             this->sink_reached.store(true);
             // this->augment_flow = augment();
            //  Logger() << "thread " << u << " " << v << " sink found";
-            thread_pool.getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
+            // thread_pool.getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
             node_v->unlockSharedMutex();
             node_u->unlockSharedMutex();
          //    Logger() << "unlocking " << u << " " << v;
@@ -395,10 +395,10 @@ public:
         // thread_pool->getMonitor().updateState("Unlocking nodes " + std::to_string(u) + "," + std::to_string(v));
         node_v->unlockSharedMutex();
         node_u->unlockSharedMutex();
-        thread_pool.getMonitor().updateState("Unlocked nodes " + std::to_string(u) + "," + std::to_string(v));
+        // thread_pool.getMonitor().updateState("Unlocked nodes " + std::to_string(u) + "," + std::to_string(v));
         
         // Logger() << "thread " << u << " " << v << " done";
-        thread_pool.getMonitor().updateState("Thread " + std::to_string(u) + "," + std::to_string(v) + " done");
+        // thread_pool.getMonitor().updateState("Thread " + std::to_string(u) + "," + std::to_string(v) + " done");
         return;
     }
     // if queue not empty, but sink reached -> isprocessing remains true, main doesn't wake up
@@ -495,7 +495,7 @@ public:
                  
 
             
-            thread_pool.getMonitor().dumpState();
+            // thread_pool.getMonitor().dumpState();
             thread_pool.waitForCompletion();
 
             // Logger() << "mina woke up" ;
@@ -543,9 +543,11 @@ public:
 
         // free resources 
         for (int i = 0; i < this->n; i++){
-            this->nodes[i]->freeLabel();
-            delete this->nodes[i];
-            this->nodes[i] = nullptr;
+            if (this->nodes[i]){
+                this->nodes[i]->freeLabel();
+                delete this->nodes[i];
+                this->nodes[i] = nullptr;
+            }
         }
         this->nodes.clear();
     }
@@ -614,14 +616,13 @@ public:
 
     void resetLabels() {
         // reset all the nodes' labels apart from source
-        for (int i = 0; i < this->n; i++){
-            if ( i != this->s)
+         for (int i = 0; i < this->n; i++){
+            if ( i != this->s && this->nodes[i] && this->nodes[i]->isLabeled())
                 this->nodes[i]->resetLabel();
         }
-        this->sink_reached.store(false);
-        
+        this->sink_reached.store(false);        
     }
-    // long bfs(){return 0.00;}
+    
 
 };
 
