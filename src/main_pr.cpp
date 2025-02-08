@@ -15,7 +15,8 @@ int main(int argc, char *argv[])
         return 1;
     }
     auto tot_time = 0;
-    for (int i = 0; i < 5; i++) {
+    num_iterations = 1;
+    for (int i = 0; i < num_iterations; i++) {
         MaxFlowSolverParallel solver = MaxFlowSolverParallel(argv[1]);
         high_resolution_clock::time_point t1 = high_resolution_clock::now();
         // chrono::high_resolution_clock::time_point t1 = chrono::high_resolution_clock::now();
@@ -31,7 +32,7 @@ int main(int argc, char *argv[])
         tot_time += duration.count();
     }
 
-    cout << "\nAverage time: " << tot_time / 5 << " micros" << endl;
+    cout << "\nAverage time: " << tot_time / num_iterations << " micros" << endl;
     
 
     // solver.printGraphToFile(argv[2]);
