@@ -96,8 +96,9 @@ public:
             edge->setResidual(edge_residual); // set the residual edge 
             edge_residual->setResidual(edge); // set the foward edge as "residual" of the residual edge
             
-            // cout << "adding line " << i <<  ": " << line << endl;
-           // cout << "adding to Node " << start_node << endl;
+/*             cout << "adding line " << i <<  ": " << line << endl;
+            cout << "adding to Graph " << start_node << endl;
+            cout << "adding to Graph " << end_node << endl; */
             graph[start_node].push_back(edge);
             graph[end_node].push_back(edge_residual);
 
