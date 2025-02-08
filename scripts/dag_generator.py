@@ -2,7 +2,7 @@ import random
 import networkx as nx
 
 MIN_CAP = 1
-MAX_CAP = 20
+MAX_CAP = 100
 
 output_file = "dag.txt"
 
@@ -72,6 +72,6 @@ def generate_dag(file_name, num_nodes, num_edges):
 
 
 if __name__ == "__main__":
-    num_nodes = 7000  
-    num_edges = 20000
+    num_nodes = 1000  
+    num_edges = 6000
     generate_dag(output_file, num_nodes, num_edges)
