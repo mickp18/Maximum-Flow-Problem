@@ -46,11 +46,23 @@ public:
 
     void wait_for_completion()
     {
-        std::unique_lock<std::mutex> lock(completion_mutex);
-        completion_condition.wait(lock, [this]
-                                  {
-            // Only complete when no tasks are queued or running
-            return tasks.empty() && total_tasks == 0; });
+        while (true)
+        {
+            // First acquire queue_mutex
+            std::unique_lock<std::mutex> queue_lock(queue_mutex);
+
+            if (tasks.empty() && total_tasks == 0)
+            {
+                return;
+            }
+
+            // Release queue_mutex before waiting
+            queue_lock.unlock();
+
+            // Wait with just completion_mutex
+            std::unique_lock<std::mutex> completion_lock(completion_mutex);
+            completion_condition.wait(completion_lock);
+        }
     }
 
     void thread_loop()
@@ -72,24 +84,22 @@ public:
                 tasks.pop();
             }
 
-            // Execute the job - it might add more tasks!
             job();
 
-            // Decrement counter after job completes
             size_t remaining = --total_tasks;
             if (remaining == 0)
             {
-                // Need to check queue under lock to avoid race
-                std::lock_guard<std::mutex> lock(queue_mutex);
+                // First acquire queue_mutex
+                std::lock_guard<std::mutex> queue_lock(queue_mutex);
                 if (tasks.empty())
                 {
+                    // Then acquire completion_mutex
                     std::lock_guard<std::mutex> completion_lock(completion_mutex);
                     completion_condition.notify_all();
                 }
             }
         }
     }
-
     void stop()
     {
         {
