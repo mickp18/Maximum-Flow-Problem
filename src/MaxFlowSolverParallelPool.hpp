@@ -373,8 +373,8 @@ public:
                 next_node != this->s && next_node != u )
             {
             
-                int next_u = next_edge->isResidual() ? next_edge->getEndNode() : next_edge->getStartNode();
-                int next_v = next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode();
+                // int next_u = next_edge->isResidual() ? next_edge->getEndNode() : next_edge->getStartNode();
+                // int next_v = next_edge->isResidual() ? next_edge->getStartNode() : next_edge->getEndNode();
                 // thread_pool->getMonitor().updateState("Adding neighbor tasks for node " + std::to_string(v));
                 // Logger() << "thread " << u << " " << v << " has neighbohour " << next_u << " " << next_v;
                 // this->pending_jobs.fetch_add(1, std::memory_order_relaxed);
@@ -438,13 +438,18 @@ public:
         {
             long edge_flow = edge->getFlow();
             // Logger() << "edge flow " << edge_flow;
-            if (edge_flow < 0)
+            if (edge->getResidual()->getFlow() > 0)
             {
                 // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
+                // Logger() << "min: between " << pred_flow_v << " and " << edge_flow;
                 long label_flow = std::min(pred_flow_v, -edge_flow);
+               //  Logger() << "assigning label on" << n_u->getId();
+               //  Logger() << "label flow " << label_flow;
+
                 n_u->setLabel(n_v->getId(), '-', label_flow);
                
                 // Logger() << "assigned label on" << n_u->getId();
+                // Logger() << "label: " << n_u->getLabel()->pred_id << " " << n_u->getLabel()->sign << " " << n_u->getLabel()->flow;
                 return true;   
             }
 
@@ -523,7 +528,13 @@ public:
             // reset labels
             resetLabels();
 
-
+            // Logger() << "MAIN: recreating labels";
+            // for (int i = 0; i < this->n; i++){
+            //     for (Edge *edge : this->graph[i]){
+            //         Logger() << "edge " << edge->getStartNode() << " " << edge->getEndNode() << " with remaining capacity " << edge->getRemainingCapacity();
+            //         Logger() << "flow " << edge->getFlow();
+            //     }
+            // }
             // wake up threads
            //  Logger() << "wake up threads";
             // check that every one is waiting and nothing in queue
@@ -570,14 +581,8 @@ public:
                     break;
                 }
             }
-
-            if (this->nodes[x]->getLabel()->sign == '+'){
-                e->augment(sink_flow);
-            }
-            else{
-                e->augment(-sink_flow);
-            }
-        
+            // doesn't matter the sign in the label, if the label has - the residual edge is taken
+            e->augment(sink_flow);        
             x = y;
             y = this->nodes[x]->getLabel()->pred_id;
         }
