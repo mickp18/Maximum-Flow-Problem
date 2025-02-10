@@ -51,6 +51,10 @@ class Edge {
             return;
         }
 
+        Edge *getResidual() {
+            return this->residual;
+        }
+
         // check if an edge belongs to the residual network
         bool isResidual() {
             return this->capacity == 0;
@@ -74,7 +78,7 @@ class Edge {
         // add more flow to an edge of an augmented path
         void augment(long bottleneck) {
             this->flow += bottleneck;
-            residual->flow -= bottleneck;
+            residual->flow = -this->flow;
         }
         
         /// Returns a string representation of the edge in the format "node1 - node2, capacity"

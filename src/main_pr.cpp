@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     auto tot_time = 0;
-    num_iterations = 1;
+    auto num_iterations = 5;
     for (int i = 0; i < num_iterations; i++) {
         MaxFlowSolverParallel solver = MaxFlowSolverParallel(argv[1]);
         high_resolution_clock::time_point t1 = high_resolution_clock::now();
