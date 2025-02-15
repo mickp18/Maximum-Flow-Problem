@@ -17,7 +17,8 @@ public:
     template <typename T>
     Logger &operator<<(const T &data)
     {
-        buffer << "threadID " << std::this_thread::get_id() << ": " << data << '\n';
+        //buffer << "threadID " << std::this_thread::get_id() << ": " << data << '\n';
+        buffer << data;
         return *this;
     }
 
