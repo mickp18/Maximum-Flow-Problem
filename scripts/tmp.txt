@@ -1,0 +1,20 @@
+M36 acquired while holding mutex M32 in thread T3: riga 425: unique_lock<mutex> lock(this->mx_node);
+M32 previously acquired by the same thread here: riga 398: this->nodes[u]->lockSharedMutex();
+M32 acquired here while holding mutex M36 in thread T3: riga 435:  if (!first_time) { this->nodes[u]->lockSharedMutex();}
+M36 previously acquired by the same thread here: riga 426: cv_nodes.wait
+
+398 -> T3 M32                      this->nodes[u]->lockSharedMutex();
+425 -> T3 M36 (have also M32)      unique_lock<mutex> lock(this->mx_node);
+426 -> T3 M36                      cv_nodes.wait
+435 -> T3 M32 (have also M36)      if (!first_time) { this->nodes[u]->lockSharedMutex();}
+
+-------------------------------------------------
+
+
+
+420 -> M34 (M32 already taken)
+432 -> M32 (M34 already taken)
+
+
+  Mutex M36 acquired here while holding mutex M37 in thread T5: 395 this->nodes[v]->lockSharedMutex();
+    Mutex M37 acquired here while holding mutex M36 in thread T6:

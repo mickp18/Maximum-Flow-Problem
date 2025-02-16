@@ -20,7 +20,7 @@ MON=$PARENT_DIR/src/ThreadMonitor.hpp
 ###
 #---------
 ## max flow solver parallel MANY THREADS
-g++  $MAIN $SOLVER_1 $NODE $EDGE $LOG $MON -o  $PROG_1 -g
+g++ -fsanitize=thread -pthread $MAIN $SOLVER_1 $NODE $EDGE $LOG $MON -o  $PROG_1 -g
 ###
 #---------
 
@@ -36,7 +36,8 @@ g++  $MAIN $SOLVER_1 $NODE $EDGE $LOG $MON -o  $PROG_1 -g
 ###
 #---------
 ### run max flow solver parallel with MANY THREADS
-$PROG_1 $PARENT_DIR/inputs/second_test.txt $PARENT_DIR/outputs/second_test.txt
+# $PROG_1 $PARENT_DIR/inputs/second_test.txt $PARENT_DIR/outputs/second_test.txt
+TSAN_OPTIONS=detect_deadlocks=1:second_deadlock_stack=1 $PROG_1 $PARENT_DIR/inputs/second_test.txt $PARENT_DIR/outputs/second_test.txt
 ###
 #---------
 # $PROG $PARENT_DIR/inputs/input_baby.txt $PARENT_DIR/outputs/second_test.txt

@@ -299,10 +299,8 @@ public:
             else
             { */
             threads.emplace_back(&MaxFlowSolverParallel::thread_function, this, edge->getStartNode(), edge->getEndNode(), edge);
-
-            this->mng.lock();
+            edge->setHasThread();
             this->num_generated.fetch_add(1);
-            this->mng.unlock();
             
             edge->setHasThread();  
         }
@@ -335,9 +333,7 @@ public:
             
             Logger() << computeTime() << ": " << "-> thread (" << u << ", " << v << ") " << "stops, sem: " << *sem;
             
-            this->mnb.lock();
             this->num_blocked.fetch_add(1);
-            this->mnb.unlock();
 
             if ( (this->num_blocked.load() + this->num_waiting_label.load()) == (this->num_generated.load() - 1) ) {
             // if ( this->num_running.load() == 1 ) {
@@ -358,14 +354,12 @@ public:
         long augmented_flow = 0;
 
         this->num_running.fetch_add(1);
-
         Logger() << computeTime() << ": " << "(enter) I am tid: " << this_thread::get_id() << " with edge: (" << u << ", " << v << ") ";
 
         // thread operations
         while (!this->done.load()){     // ?? need to lock the mutex of done ?? No -> https://chatgpt.com/share/6776c875-9cf0-8004-90ae-f5cdfbce30b4           
             if (this->sink_reached.load()){
                 {   // block
-
                     Logger() << computeTime() << ": " << "(1) thread (" << u << ", " << v << ") will block on cv, nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load();
 
                     this->num_running.fetch_sub(1);
@@ -379,7 +373,6 @@ public:
                         
                         Logger() << computeTime() << ": " << "-> (aft) nb: " << this->num_blocked.load() << ", ng: " << this->num_generated.load();
                         return res;
-                        // return f(&sem, u, v);
                     });
 
                     this->num_running.fetch_add(1);
@@ -388,92 +381,109 @@ public:
                 }
                 
                 if (this->done.load()) {
-                    // this->num_running.fetch_sub(1);
+                    // .. 
                     Logger() << computeTime() << ": " << "(*) thread (" << u << ", " << v << ") exits";
                     break;
                 }
             }        
 
-            // if (!u_is_labeled) {
-            //     cout << "thread (" << u << ", " << v << ") "<< "waits the Node " << u << endl;
-            //     // blocked on cv also!!
-            //     this->num_blocked.fetch_add(1);
-            //     this->nodes[u]->waitOnNodeCV();
-            //     this->num_blocked.fetch_sub(1);
-            //     u_is_labeled = this->nodes[u]->isLabeled();
-            // }
+           
             Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u;
-
             this->nodes[u]->lockSharedMutex();
-
             Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u;
             Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v;
+            this->nodes[v]->lockSharedMutex();
             Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of v=" << v;
+
 
             bool u_is_labeled = this->nodes[u]->isLabeled();
             bool v_is_labeled = this->nodes[v]->isLabeled();
-            // bool& ref_u = ref(u_is_labeled);
             
             // thread blocked if both nodes have no label, remains blocked until one of the two nodes gets a label or until there is no augmenter left
             if (!(u_is_labeled || v_is_labeled)) {
                 bool first_time = true;
 
-                // if (this->num_running.load() == 1 && (this->num_blocked.load() + this->num_waiting_label.load() == (this->num_generated.load() - 1))) {
+                this->nodes[u]->unlockSharedMutex();
+                this->nodes[v]->unlockSharedMutex();
+
+
+                // I am the last running thread, and both nodes have no label, so I need to notify everyone to end and I end myself
                 if ((this->num_blocked.load() + this->num_waiting_label.load() == (this->num_generated.load() - 1))) {
-                    this->done.store(true);
-                    this->cv.notify_all();
-                    this->cv_nodes.notify_all();
-                    this->nodes[u]->unlockSharedMutex();
-                    this->nodes[v]->unlockSharedMutex();
+                    Logger() << computeTime() << ": " << "done (T has no labels), T(" << u << ", " << v << ")";
+                    this->done.store(true);         // aug finieshed
+                    this->cv.notify_all();          // unlock all threads that have finished and are waiting for next iteration
+                    this->cv_nodes.notify_all();    // unlock all threads waiting for 1 label to continue
+                    //this->nodes[u]->unlockSharedMutex();
+                    //this->nodes[v]->unlockSharedMutex();
                     break;
                 }
 
-                this->num_waiting_label.fetch_add(1);
-                this->num_running.fetch_sub(1);
+                this->num_waiting_label.fetch_add(1);   // I am waiting on a label so add +1
+                this->num_running.fetch_sub(1);         // I am not running anymore so -1
                 
                 unique_lock<mutex> lock(this->mx_node);
                 this->cv_nodes.wait(lock, [this, u, v, &u_is_labeled, &v_is_labeled, &first_time] { 
-                    // ref_u = this->nodes[u]->isLabeled();
-                    if (!first_time) {
-                        u_is_labeled = this->nodes[u]->isLabeled();
-                        v_is_labeled = this->nodes[v]->isLabeled();
-                    } else {
-                        first_time = false;
-                    }
-                    // if (!(this->nodes[v]->isLabeled() || this->nodes[u]->isLabeled())) {
-                    if (!u_is_labeled &&  !v_is_labeled) {
-                        // this->num_blocked.fetch_add(1);                
-                        Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "blocks since neither " << u << " nor " << v << " are labeled";
-                        this->nodes[u]->unlockSharedMutex();
-                        Logger() << computeTime() << ": " << "(no labels of nodes): Thread (" << u << ", " << v << ") Unlocked mx of u=" << u;
-                        this->nodes[v]->unlockSharedMutex();
-                        Logger() << computeTime() << ": " << "(no labels of nodes): Thread (" << u << ", " << v << ") Unlocked mx of v=" << v;
+                    // if node u has no label AND node v has no label, wait
 
-                        return false;
-                    }
-                    // this->num_blocked.fetch_sub(1);
-                    // this->nodes[u]->lockSharedMutex();
-                    // this->nodes[v]->lockSharedMutex();
-                    Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u;
+                    // if 1 st time -> unlock mutexes directly
+                    // if I get notified -> go and check if any of the nodes has a label
+                        // if true -> return true, go on after CV
+                        // if false -> return false, remain blocked on CV
 
+                    // if (!first_time) { 
+                    //     Logger() <<  computeTime() << ": " << "Thread (" << u << ", " << v << ") RECHECKS cv_nodes (HAD no labels, now may have some)";
+                    //     Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u;
+                    //     this->nodes[u]->lockSharedMutex();
+                    //     Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u;
+                    //     Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v;
+                    //     this->nodes[v]->lockSharedMutex();
+                    //     Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of v=" << v;
+                    //     u_is_labeled = this->nodes[u]->isLabeled();
+                    //     v_is_labeled = this->nodes[v]->isLabeled();
+                    // } 
+                    // else {
+                    //     Logger() <<  computeTime() << ": " << "Thread (" << u << ", " << v << ") checks cv_nodes (has no labels)";
+                    //     first_time = false;
+                    // }
+                    
+                    // if (!u_is_labeled &&  !v_is_labeled) { 
+                    //     Logger() << computeTime() << ": " << "(no labels of nodes): Thread (" << u << ", " << v << ") Trying to UNLOCK mx of u=" << u;
+                    //     this->nodes[u]->unlockSharedMutex();
+                    //     Logger() << computeTime() << ": " << "(no labels of nodes): Thread (" << u << ", " << v << ") Unlocked mx of u=" << u;
+                    //     Logger() << computeTime() << ": " << "(no labels of nodes): Thread (" << u << ", " << v << ") Trying to UNLOCK mx of v=" << v;
+                    //     this->nodes[v]->unlockSharedMutex();
+                    //     Logger() << computeTime() << ": " << "(no labels of nodes): Thread (" << u << ", " << v << ") Unlocked mx of v=" << v;
+                    //     Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "blocks since neither " << u << " nor " << v << " are labeled";
+                    //     //first_time = false;
+                        
+                    //     return false;
+                    // }
+                    
+                    // // at least 1 of the nodes has a label now
+                    
+                    // Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "unblocks since either " << u << " or " << v << " is labeled (min 1 label) ";
+                    // return true;
                     this->nodes[u]->lockSharedMutex();
-                    Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u;
-                    Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v;
                     this->nodes[v]->lockSharedMutex();
 
-                    Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u;
+                    u_is_labeled = this->nodes[u]->isLabeled();
+                    v_is_labeled = this->nodes[v]->isLabeled();
+
+                    if (!u_is_labeled &&  !v_is_labeled) {
+                        this->nodes[u]->unlockSharedMutex();
+                        this->nodes[v]->unlockSharedMutex();
+                        return false;
+                    }      
                     return true;
+
                 });
                 this->num_waiting_label.fetch_sub(1);
                 this->num_running.fetch_add(1);
-                
+
                 if (this->done.load()) {
-                    break;
-                }
-
-
-                // u_is_labeled = this->nodes[u]->isLabeled();
-                // v_is_labeled = this->nodes[v]->isLabeled();
+                    this->done.store(false);
+                    //break;
+                }            
             }
 
             long pred_flow = this->nodes[u]->getLabel()->flow;
@@ -526,8 +536,6 @@ public:
                 }
             } 
             
-            // this->nodes[u]->unlockSharedMutex();
-            // this->nodes[v]->unlockSharedMutex();
             this->nodes[u]->unlockSharedMutex();
             Logger() << computeTime() << ": " << "cv_nodes: Thread (" << u << ", " << v << ") UNlocked mx of u=" << u;
             this->nodes[v]->unlockSharedMutex();
@@ -540,10 +548,7 @@ public:
                 {
                     Logger() << computeTime() << ": " << "I am the augmenter thread (" << u << ", " << v << ")";
                     Logger() << computeTime() << ": " << "*. Augmenter" << " edge: (" << u << ", " << v << ") " << "is waiting on cv augment";
-                    // cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load() << endl;
                     
-                    // cout << "num_blocked: " << this->num_blocked.load() << " num_generated: " << this->num_generated.load()
-                    // if ((this->num_blocked.load() + this->num_waiting_label.load()) < (this->num_generated.load() - 1)) {
                     unique_lock<mutex> l_augment(this->mx_cv);
                     this->cv_augment.wait(l_augment, [this, u, v] {
                         Logger() << computeTime() << ": " << "thread (" << u << ", " << v << "), " << "nb: " << this->num_blocked.load() << " ng: " << this->num_generated.load();
@@ -554,7 +559,6 @@ public:
                 }
 
                 Logger() << computeTime() << ": " << "*. Augmenter" << " - edge: (" << u << ", " << v << ") " <<  "gets out of cv augment";                
-
                 augmented_flow = augment();
                 Logger() << computeTime() << ": " << "augmented flow: " << augmented_flow;
 
@@ -562,49 +566,41 @@ public:
                 this->max_flow += augmented_flow;
                 
                 if (augmented_flow == 0 || !sinkCapacityLeft() || !sourceCapacityLeft()) {
-                    Logger() << computeTime() << ": " << "done";
-
+                    Logger() << computeTime() << ": " << "done (augmenter), T(" << u << ", " << v << ")";
                     this->done.store(true);
                 } 
                 // reset
-                Logger() << computeTime() << ": " << "reset";
-                
+                Logger() << computeTime() << ": " << "reset labels";
 
                 resetLabels();
                 this->augmenter_thread_exists.store(false);
                 is_augmenter = false;
                 augmented_flow = 0;
-                this->mnb.lock();
                 this->num_blocked.store(0);
-                this->mnb.unlock();
                 this->cv.notify_all();  // wake all blocked threads (to restart)
 
             } else {
                 //  WORKER THREAD
-
                 if (!this->nodes[v]->isSink(t)) {
                 // SPAWNING OF NEW THREADS
                     list<Edge *> neighbour_edges = this->graph[v];
                     
                     Logger() << computeTime() << ": " << "thread (" << u << ", " << v << ")"<< " starts spawning";
-
                     for (auto next_edge : neighbour_edges) {
                         // get if the end node of a possible nexte edge has already a label
                         bool next_end_node_labeled = this->nodes[next_edge->getEndNode()]->isLabeled();
 
-                        if (!next_end_node_labeled && !next_edge->getHasThread() && !this->augmenter_thread_exists) {
-                            Logger() << computeTime() << ": " << "thread (" << u << ", " << v << ")"<< " generates new thread (" << next_edge->getStartNode() << ", " << next_edge->getEndNode() << ")";
+                        if (!next_end_node_labeled && !next_edge->getHasThread() && !this->augmenter_thread_exists.load()) {
                             {
-                                lock_guard<mutex> lock(this->mx_cv);
-                                this->mng.lock();
+                                //lock_guard<mutex> lock(this->mx_cv);
                                 this->num_generated.fetch_add(1);
-                                this->mng.unlock();
                                 next_edge->setHasThread(); 
-                                if (next_edge->isResidual()) {
+                                //if (next_edge->isResidual()) {
                                     threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
-                                } else {
-                                    threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
-                                }
+                                    Logger() << computeTime() << ": " << "thread (" << u << ", " << v << ") generated thread (" << v << ", " << next_edge->getEndNode() << ")";
+                                    //} else {
+                                //    threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
+                                //}
                             }
                         }
                     }
@@ -616,6 +612,7 @@ public:
                 // if this is the last running thread and it is about to get blocked, there is no more augmenting flow available, so the algorithm should end
                 // if (this->num_running.load() == 1) {
                 if ((this->num_blocked.load() + this->num_waiting_label.load()) == (this->num_generated.load() - 1)) {
+                    Logger() << computeTime() << ": " << "done (by worker), T(" << u << ", " << v << ")";
                     this->done.store(true);
                     this->cv.notify_all();
                     this->cv_nodes.notify_all();
