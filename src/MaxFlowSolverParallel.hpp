@@ -388,12 +388,30 @@ public:
             }        
 
            
-            Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u;
-            this->nodes[u]->lockSharedMutex();
-            Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u;
-            Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v;
-            this->nodes[v]->lockSharedMutex();
-            Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of v=" << v;
+            if (u < v) {
+                Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u;
+                this->nodes[u]->lockSharedMutex();
+                Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u;
+
+                Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v;
+                this->nodes[v]->lockSharedMutex();
+                Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of v=" << v;
+            } else {
+                Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v;
+                this->nodes[v]->lockSharedMutex();
+                Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of v=" << v;
+
+                Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u;
+                this->nodes[u]->lockSharedMutex();
+                Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u;
+            }
+
+            // Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of u=" << u;
+            // this->nodes[u]->lockSharedMutex();
+            // Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of u=" << u;
+            // Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") trying to lock mx of v=" << v;
+            // this->nodes[v]->lockSharedMutex();
+            // Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") locked mx of v=" << v;
 
 
             bool u_is_labeled = this->nodes[u]->isLabeled();
@@ -463,11 +481,17 @@ public:
                     
                     // Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "unblocks since either " << u << " or " << v << " is labeled (min 1 label) ";
                     // return true;
-                    this->nodes[u]->lockSharedMutex();
-                    this->nodes[v]->lockSharedMutex();
 
-                    u_is_labeled = this->nodes[u]->isLabeled();
-                    v_is_labeled = this->nodes[v]->isLabeled();
+                    if (u<v) {
+                        this->nodes[u]->lockSharedMutex();
+                        this->nodes[v]->lockSharedMutex();
+                    } else {
+                        this->nodes[v]->lockSharedMutex();
+                        this->nodes[u]->lockSharedMutex();
+                    }
+
+                    u_is_labeled = this->nodes[u]->isLabeled();     // 1,2 -> 1   and  2, 1 -> 2
+                    v_is_labeled = this->nodes[v]->isLabeled();     // 1,2 1 -> 2 x  and 2, 1 -> 1x
 
                     if (!u_is_labeled &&  !v_is_labeled) {
                         this->nodes[u]->unlockSharedMutex();
@@ -486,7 +510,6 @@ public:
                 }            
             }
 
-            long pred_flow = this->nodes[u]->getLabel()->flow;
             // EDGE (U,V)
             // if u is labeled and unscanned, v is unlabeled and f(u, v) < c(u, v) ( equiv. to c(u,v) - f(u,v) > 0)
             if (u_is_labeled && !v_is_labeled) {
@@ -494,8 +517,9 @@ public:
                 long remaining_capacity = edge->getRemainingCapacity();
                 if (remaining_capacity > 0){
                     // assign the label (u, +, l(v)) to node v, Where l(v) = min(l(u), c(u, v) − f(u, v)). 
-                    long label_flow = std::min(pred_flow, remaining_capacity);
-
+                    long pred_flow_u = this->nodes[u]->getLabel()->flow;
+                    long label_flow = std::min(pred_flow_u, remaining_capacity);
+                    
                     Logger() << computeTime() << ": " << "Thread (" << u << ", " << v << ") "<< "setting label of node " << v;
                     this->nodes[v]->setLabel(u, '+', label_flow);
                     // check if the node on which the label was just set is the sink
@@ -517,9 +541,10 @@ public:
             else if (v_is_labeled && !u_is_labeled) {
                 Logger() << "BACKWARD EDGE (" << u << ", " << v << ")";
                 long edge_flow = edge->getFlow();
-                if (edge_flow > 0) {
-                // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
-                    long label_flow = std::min(pred_flow, edge_flow);
+                if (edge->getResidual()->getFlow() > 0) {
+                    long pred_flow_v = this->nodes[u]->getLabel()->flow;
+                    // assign the label (v, −, l(u)) to node u, where l(u) = min(l(v), f(u, v))
+                    long label_flow = std::min(pred_flow_v, -edge_flow);
                     Logger() << computeTime() << ": " << "Thread: (" << u << ", " << v << ") "<< "setting label of node " << u;
                     this->nodes[u]->setLabel(v, '-', label_flow);
                     // check if the node on which the label was just set is the sink
@@ -590,17 +615,14 @@ public:
                         // get if the end node of a possible nexte edge has already a label
                         bool next_end_node_labeled = this->nodes[next_edge->getEndNode()]->isLabeled();
 
-                        if (!next_end_node_labeled && !next_edge->getHasThread() && !this->augmenter_thread_exists.load()) {
+                        //if (!next_end_node_labeled && !next_edge->getHasThread() && !this->augmenter_thread_exists.load()) {
+                        if (!next_end_node_labeled && next_edge->getEndNode() != u && !next_edge->getHasThread() && !this->augmenter_thread_exists.load()) {
                             {
                                 //lock_guard<mutex> lock(this->mx_cv);
                                 this->num_generated.fetch_add(1);
                                 next_edge->setHasThread(); 
-                                //if (next_edge->isResidual()) {
-                                    threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
-                                    Logger() << computeTime() << ": " << "thread (" << u << ", " << v << ") generated thread (" << v << ", " << next_edge->getEndNode() << ")";
-                                    //} else {
-                                //    threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
-                                //}
+                                threads_local.emplace_back(&MaxFlowSolverParallel::thread_function, this, next_edge->getStartNode(), next_edge->getEndNode(), next_edge);
+                                Logger() << computeTime() << ": " << "thread (" << u << ", " << v << ") generated thread (" << v << ", " << next_edge->getEndNode() << ")";
                             }
                         }
                     }
