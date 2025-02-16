@@ -315,19 +315,19 @@ public:
         // thread_pool.getMonitor().updateState("Waiting for locks on nodes " + std::to_string(u) + "," + std::to_string(v));
        //  Logger() << "locking " << u << " " << v;
 
-        node_u->lockSharedMutex();
-        node_v->lockSharedMutex();
+        // node_u->lockSharedMutex();
+        // node_v->lockSharedMutex();
 
-        // if (u < v)
-        // {
-        //     node_u->lockSharedMutex();
-        //     node_v->lockSharedMutex();
-        // }
-        // else
-        // {
-        //     node_v->lockSharedMutex();
-        //     node_u->lockSharedMutex();
-        // }
+        if (u < v)
+        {
+            node_u->lockSharedMutex();
+            node_v->lockSharedMutex();
+        }
+        else
+        {
+            node_v->lockSharedMutex();
+            node_u->lockSharedMutex();
+        }
 
         // thread_pool.getMonitor().updateState("Got locks for nodes " + std::to_string(u) + "," + std::to_string(v));
        //  Logger() << "locked " << u << " " << v;

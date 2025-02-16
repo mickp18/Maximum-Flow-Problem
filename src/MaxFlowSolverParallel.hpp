@@ -311,6 +311,7 @@ public:
         // for (int i = 0;  i < this->threads.size(); i++) {
         for (int i = 0; i < num_source_edges; i++) {
             this->threads[i].join();
+            Logger() << "I am joining thread " << i;
         }
 
 

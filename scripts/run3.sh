@@ -7,6 +7,7 @@ SOLVER=$PARENT_DIR/src/MaxFlowSolverParallelPool.hpp
 SOLVER_1=$PARENT_DIR/src/MaxFlowSolverParallel.hpp
 EDGE=$PARENT_DIR/src/Edge.hpp
 NODE=$PARENT_DIR/src/Node.hpp
+NODEFIRST=$PARENT_DIR/src/NodeFirst.hpp
 MAIN=$PARENT_DIR/src/main_pr.cpp
 PROG=$PARENT_DIR/src/MaxFlowSolverPP
 PROG_1=$PARENT_DIR/src/MaxFlowSolverP
@@ -20,7 +21,7 @@ MON=$PARENT_DIR/src/ThreadMonitor.hpp
 ###
 #---------
 ## max flow solver parallel MANY THREADS
-g++ -fsanitize=thread -pthread $MAIN $SOLVER_1 $NODE $EDGE $LOG $MON -o  $PROG_1 -g
+g++ -fsanitize=thread -pthread $MAIN $SOLVER_1 $NODEFIRST $EDGE $LOG $MON -o  $PROG_1 -g
 ###
 #---------
 

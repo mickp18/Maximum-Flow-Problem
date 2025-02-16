@@ -18,3 +18,101 @@ M36 previously acquired by the same thread here: riga 426: cv_nodes.wait
 
   Mutex M36 acquired here while holding mutex M37 in thread T5: 395 this->nodes[v]->lockSharedMutex();
     Mutex M37 acquired here while holding mutex M36 in thread T6:
+
+
+
+Number of nodes: 3
+Graph read with nodes: 
+0 1 2 
+starting
+4543185: (enter) I am tid: 140239578326592 with edge: (0, 1) 
+5910668: Thread (0, 1) trying to lock mx of u=0
+6396411: Thread (0, 1) locked mx of u=0
+7046224: Thread (0, 1) trying to lock mx of v=1
+7596626: Thread (0, 1) locked mx of v=1
+FORWARD EDGE (0, 1)
+8098443: Thread (0, 1) setting label of node 1
+8330026: cv_nodes: Thread (0, 1) UNlocked mx of u=0
+8514564: cv_nodes: Thread (0, 1) UNlocked mx of v=1
+8752820: thread (0, 1) starts spawning
+14462036: num threads to join in solve: 2
+15239826: thread (0, 1) generated thread (1, 2)
+15295172: (enter) I am tid: 140239561541184 with edge: (1, 2) 
+16233704: Thread (1, 2) trying to lock mx of u=1
+16371276: Thread (1, 2) locked mx of u=1
+16557766: Thread (1, 2) trying to lock mx of v=2
+16756149: Thread (1, 2) locked mx of v=2
+FORWARD EDGE (1, 2)
+17147841: Thread (1, 2) setting label of node 2
+15288536: (enter) I am tid: 140239569933888 with edge: (0, 2) 
+17337494: cv_nodes: Thread (1, 2) UNlocked mx of u=1
+17865005: (1) thread (0, 2) will block on cv, nb: 0 ng: 3
+18145165: cv_nodes: Thread (1, 2) UNlocked mx of v=2
+15820182: thread (0, 1) finished spawning; nb: 0 ng: 3
+18503485: (1) thread (0, 2) checks cv
+18974544: I am the augmenter thread (1, 2)
+19236987: (2) thread (0, 1) will block on cv, nb: 0 ng: 3
+19477823: -> (bef) nb: 0, ng: 3
+19622402: *. Augmenter edge: (1, 2) is waiting on cv augment
+19924646: -> thread (0, 2) stops, sem: 0
+20333117: -> (aft) nb: 1, ng: 3
+20912906: (2) thread (0, 1) checks cv
+21062846: -> (bef) nb: 1, ng: 3
+21208367: -> thread (0, 1) stops, sem: 0
+21365934: -> (aft) nb: 2, ng: 3
+21689786: thread (1, 2), nb: 2 ng: 3
+21873273: *. Augmenter - edge: (1, 2) gets out of cv augment
+22008355: augmented flow: 1
+22198790: reset labels
+22402173: Thread (1, 2) trying to lock mx of u=1
+22406684: (1) thread (0, 2) checks cv
+22544675: Thread (1, 2) locked mx of u=1
+22841457: Thread (1, 2) trying to lock mx of v=2
+22894105: Thread (1, 2) locked mx of v=2
+22693270: -> (bef) nb: 0, ng: 3
+23051801: -> thread: (0, 2) restarts, sem: 1
+23198733: -> (aft) nb: 0, ng: 3
+23287481: (1)  edge: (0, 2) gets out of cv
+23477824: Thread (0, 2) trying to lock mx of u=0
+23518297: (2) thread (0, 1) checks cv
+23565657: Thread (0, 2) locked mx of u=0
+23680024: Thread (0, 2) trying to lock mx of v=2
+23806140: Thread (0, 2) locked mx of v=2
+23587439: -> (bef) nb: 0, ng: 3
+FORWARD EDGE (0, 2)
+23969370: -> thread: (0, 1) restarts, sem: 1
+24133205: Thread (0, 2) setting label of node 2
+24311846: -> (aft) nb: 0, ng: 3
+24535416: cv_nodes: Thread (0, 2) UNlocked mx of u=0
+24554137: (2) thread (0, 1) gets out of cv
+24688497: cv_nodes: Thread (0, 2) UNlocked mx of v=2
+24990654: I am the augmenter thread (0, 2)
+25040418: *. Augmenter edge: (0, 2) is waiting on cv augment
+24833918: (1) thread (0, 1) will block on cv, nb: 0 ng: 3
+25074286: thread (0, 2), nb: 0 ng: 3
+25298135: (1) thread (0, 1) checks cv
+25390883: -> (bef) nb: 0, ng: 3
+25556868: -> thread (0, 1) stops, sem: 0
+25820110: -> (aft) nb: 1, ng: 3
+26199159: thread (0, 2), nb: 1 ng: 3
+26296360: *. Augmenter - edge: (0, 2) gets out of cv augment
+26410989: augmented flow: 2
+26517727: done (augmenter), T(0, 2)
+26844744: reset labels
+BACKWARD EDGE (1, 2)
+27504107: Thread (1, 2) has edge flow <= 0: 1
+27807790: cv_nodes: Thread (1, 2) UNlocked mx of u=1
+27249083: (return) end of thread (0, 2)
+27809362: (1) thread (0, 1) checks cv
+28977373: -> (bef) nb: 0, ng: 2
+29073000: -> thread: (0, 1) restarts, sem: 1
+29147063: -> (aft) nb: 0, ng: 2
+29218536: (1)  edge: (0, 1) gets out of cv
+27990927: cv_nodes: Thread (1, 2) UNlocked mx of v=2
+29623888: (2) thread (1, 2) will block on cv, nb: 0 ng: 2
+29815230: (2) thread (1, 2) checks cv
+29939163: -> (bef) nb: 0, ng: 2
+30038425: -> thread (1, 2) stops, sem: 0
+29320975: (*) thread (0, 1) exits
+30232738: -> (aft) nb: 1, ng: 2
+30795003: i'm a thread (0, 1) and joining thread: 140239561541184
