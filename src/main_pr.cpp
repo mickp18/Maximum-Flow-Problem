@@ -1,4 +1,4 @@
-#include "MaxFlowSolverParallel.hpp"
+#include "MaxFlowSolverParallelPool.hpp"
 #include <chrono>
 
 using namespace std;

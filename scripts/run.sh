@@ -22,11 +22,11 @@ echo "Graph saved to $PARENT_DIR/outputs/$2"
 
 
 # Create graph with Graphviz
-g++ $PARENT_DIR/viz/graphViz.cpp -o $PARENT_DIR/viz/graphviz  -lgvc -lcgraph
+#g++ $PARENT_DIR/viz/graphViz.cpp -o $PARENT_DIR/viz/graphviz  -lgvc -lcgraph
 
 
 # Run Graphviz using result file of the solver
-$PARENT_DIR/viz/graphviz $PARENT_DIR/outputs/$2
+#$PARENT_DIR/viz/graphviz $PARENT_DIR/outputs/$2
 
 
 

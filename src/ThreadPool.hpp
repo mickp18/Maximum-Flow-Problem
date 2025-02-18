@@ -92,7 +92,7 @@ void ThreadPool::ThreadLoop()
         }
 
         job();
-        size_t remaining = --active_tasks; // This line decrements the active_tasks atomic variable and assigns the result to remaining. It is equivalent to remaining = active_tasks - 1;, but is atomic, meaning it is thread-safe.
+        size_t remaining = --active_tasks;
         if (remaining == 0)
         {
             lock_guard<mutex> lock(queue_mutex);
@@ -162,7 +162,6 @@ void ThreadPool::clearQueue()
     }
 }
 
-// called by the main thread, it waits for threads to finish all jobs in the queue
 void ThreadPool::waitForCompletion()
 {
     // std::unique_lock<std::mutex> lock(completion_mutex);

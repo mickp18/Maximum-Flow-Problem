@@ -305,7 +305,8 @@ public:
    */
     void thread_function(ThreadPool &thread_pool, int u, int v, Edge *edge) {
         // thread_pool.getMonitor().updateState("Starting task for nodes " + std::to_string(u) + "," + std::to_string(v));
-        // Logger() << "thread " << u << " " << v;
+        bool enqueued_any = false;
+       // Logger() << "thread " << u << " " << v;
         Node* node_u = this->nodes[u];
         Node* node_v = this->nodes[v];
         
@@ -314,10 +315,6 @@ public:
         }
         // thread_pool.getMonitor().updateState("Waiting for locks on nodes " + std::to_string(u) + "," + std::to_string(v));
        //  Logger() << "locking " << u << " " << v;
-
-        // node_u->lockSharedMutex();
-        // node_v->lockSharedMutex();
-
         if (u < v)
         {
             node_u->lockSharedMutex();
@@ -328,11 +325,10 @@ public:
             node_v->lockSharedMutex();
             node_u->lockSharedMutex();
         }
-
         // thread_pool.getMonitor().updateState("Got locks for nodes " + std::to_string(u) + "," + std::to_string(v));
        //  Logger() << "locked " << u << " " << v;
         
-        // manage labelling
+        // treat labelling
         if (!this->assign_label(node_u, node_v, edge)){
            //  Logger() << "thread " << u << " " << v << " label not assigned";
             // thread_pool.getMonitor().updateState("Releasing locks for nodes " + std::to_string(u) + "," + std::to_string(v));
@@ -408,7 +404,7 @@ public:
     // if queue not empty, but sink reached -> isprocessing remains true, main doesn't wake up
     bool assign_label(Node *n_u, Node *n_v, Edge *edge) {
         // check if we are handling residual edges
-        if (edge->isResidual()){    // if edge is backward, i.e. part of residual network only (not in flow network)
+        if (edge->isResidual()){
             Node* temp = n_u;
             n_u = n_v;
             n_v = temp;
@@ -489,11 +485,11 @@ public:
                     //Logger() << "edge u " << u << " v " << v << " with edge remaining capacity " << edge->getRemainingCapacity();
                     {
                     // unique_lock<mutex> lock(mx);
-                    pending_jobs.fetch_add(1, std::memory_order_relaxed);   // the std::memory_order_relaxed parameter indicates that the operation does not impose any specific ordering constraints on other memory accesses.
-                    thread_pool.QueueJob([&thread_pool, this, u, v, edge] {     // ??? diff b/n &thread_pool and this, can this be deleted bc not used in lambda func
+                    pending_jobs.fetch_add(1, std::memory_order_relaxed); 
+                    thread_pool.QueueJob([&thread_pool, this, u, v, edge] {
                         thread_function(thread_pool, u, v, edge); });
                     }
-                    pending_jobs.fetch_sub(1, std::memory_order_relaxed);   // ??? why 1st add 1 then sub 1
+                    pending_jobs.fetch_sub(1, std::memory_order_relaxed); 
                 } else {
                     //Logger() << "edge u " << edge->getStartNode() << " v " << edge->getEndNode() << " with NEGATIVE or 0 edge remaining capacity: " << edge->getRemainingCapacity();
                 }
@@ -522,7 +518,7 @@ public:
 
             }
            //  Logger() << "MAIN: augment flow: " << augment_flow;
-            this->max_flow += augment_flow;
+            this->max_flow+= augment_flow;
            //  Logger() << "MAIN: max flow: " << this->max_flow;
            //  Logger() << "MAIN: resetting sink reached";
             // destroy queue
@@ -625,7 +621,7 @@ public:
 
     void resetLabels() {
         // reset all the nodes' labels apart from source
-        for (int i = 0; i < this->n; i++){
+         for (int i = 0; i < this->n; i++){
             if ( i != this->s && this->nodes[i] && this->nodes[i]->isLabeled())
                 this->nodes[i]->resetLabel();
         }
@@ -634,6 +630,3 @@ public:
     
 
 };
-
-
-

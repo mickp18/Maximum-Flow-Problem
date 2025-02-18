@@ -781,3 +781,572 @@ found in: 4850 micros
 
 Average time: 48121 micros
 ThreadSanitizer: reported 1 warnings
+
+
+-----------------------------------
+Number of nodes: 4
+Graph read with nodes: 
+0 1 2 3 
+starting
+1978768: (enter) I am tid: 139626507396672 with edge: (0, 1) 
+2211628: Thread (0, 1) trying to lock mx of u=0
+2322599: Thread (0, 1) locked mx of u=0
+2420432: Thread (0, 1) trying to lock mx of v=1
+2521791: Thread (0, 1) locked mx of v=1
+FORWARD EDGE (0, 1)
+2667932: Thread (0, 1) setting label of node 1
+2712995: num threads to join in solve: 2
+2743353: cv_nodes: Thread (0, 1) UNlocked mx of u=0
+2810542: (enter) I am tid: 139626499003968 with edge: (0, 2) 
+2865362: cv_nodes: Thread (0, 1) UNlocked mx of v=1
+2922463: Thread (0, 2) trying to lock mx of u=0
+3051436: thread (0, 1) starts spawning
+3093722: Thread (0, 2) locked mx of u=0
+3254390: Thread (0, 2) trying to lock mx of v=2
+3335708: Thread (0, 2) locked mx of v=2
+FORWARD EDGE (0, 2)
+3519931: Thread (0, 2) setting label of node 2
+3589142: cv_nodes: Thread (0, 2) UNlocked mx of u=0
+3643625: cv_nodes: Thread (0, 2) UNlocked mx of v=2
+3671703: thread (0, 2) starts spawning
+4506642: thread (0, 1) generated thread (1, 2)
+4626821: (enter) I am tid: 139626490611264 with edge: (1, 2) 
+4713678: thread (0, 2) generated thread (2, 3)
+4778210: Thread (1, 2) trying to lock mx of u=1
+4781783: (enter) I am tid: 139626482218560 with edge: (2, 3) 
+4863696: thread (0, 2) finished spawning; nb: 0 ng: 5
+4952409: Thread (1, 2) locked mx of u=1
+5017419: Thread (2, 3) trying to lock mx of u=2
+5116705: (2) thread (0, 2) will block on cv, nb: 0 ng: 5
+5175872: Thread (1, 2) trying to lock mx of v=2
+5353049: (2) thread (0, 2) checks cv
+5247291: Thread (2, 3) locked mx of u=2
+5467879: -> (bef) nb: 0, ng: 5
+5541078: Thread (2, 3) trying to lock mx of v=3
+5664028: -> thread (0, 2) stops, sem: 0
+5758193: Thread (2, 3) locked mx of v=3
+5796831: -> (aft) nb: 1, ng: 5
+5584247: thread (0, 1) generated thread (1, 3)
+5625589: (enter) I am tid: 139626473825856 with edge: (1, 3) 
+FORWARD EDGE (2, 3)
+6135734: Thread (1, 3) trying to lock mx of u=1
+6159621: Thread (2, 3) setting label of node 3
+6020056: thread (0, 1) finished spawning; nb: 1 ng: 5
+6291504: cv_nodes: Thread (2, 3) UNlocked mx of u=2
+6302252: Thread (1, 2) locked mx of v=2
+6312255: (2) thread (0, 1) will block on cv, nb: 1 ng: 5
+6381770: cv_nodes: Thread (2, 3) UNlocked mx of v=3
+6485200: cv_nodes: Thread (1, 2) UNlocked mx of u=1
+6494175: Thread (1, 3) locked mx of u=1
+6502826: (2) thread (0, 1) checks cv
+6577166: I am the augmenter thread (2, 3)
+6656622: cv_nodes: Thread (1, 2) UNlocked mx of v=2
+6743261: Thread (1, 3) trying to lock mx of v=3
+6812764: -> (bef) nb: 1, ng: 5
+6906990: *. Augmenter edge: (2, 3) is waiting on cv augment
+7028516: thread (1, 2) starts spawning
+7076064: Thread (1, 3) locked mx of v=3
+7161613: -> thread (0, 1) stops, sem: 0
+7370873: thread (1, 2) finished spawning; nb: 1 ng: 5
+7437955: cv_nodes: Thread (1, 3) UNlocked mx of u=1
+7498087: -> (aft) nb: 2, ng: 5
+7628653: (2) thread (1, 2) will block on cv, nb: 2 ng: 5
+7688169: cv_nodes: Thread (1, 3) UNlocked mx of v=3
+7800884: thread (2, 3), nb: 2 ng: 5
+7889436: (2) thread (1, 3) will block on cv, nb: 2 ng: 5
+8030971: (2) thread (1, 2) checks cv
+8111198: -> (bef) nb: 2, ng: 5
+8168074: -> thread (1, 2) stops, sem: 0
+8221574: -> (aft) nb: 3, ng: 5
+8331632: (2) thread (1, 3) checks cv
+8380665: -> (bef) nb: 3, ng: 5
+8416451: -> thread (1, 3) stops, sem: 0
+8483511: -> (aft) nb: 4, ng: 5
+8611467: thread (2, 3), nb: 4 ng: 5
+8702557: *. Augmenter - edge: (2, 3) gets out of cv augment
+8821747: augmented flow: 3
+8958243: reset labels
+9105342: (2) thread (0, 2) checks cv
+9157472: -> (bef) nb: 0, ng: 5
+9243703: -> thread: (0, 2) restarts, sem: 1
+9333406: -> (aft) nb: 0, ng: 5
+9171914: Thread (2, 3) trying to lock mx of u=2
+9464416: (2) thread (0, 1) checks cv
+9431661: (2) thread (0, 2) gets out of cv
+9502624: Thread (2, 3) locked mx of u=2
+9768061: Thread (2, 3) trying to lock mx of v=3
+9884580: Thread (2, 3) locked mx of v=3
+9602802: -> (bef) nb: 0, ng: 5
+9659796: Thread (0, 2) trying to lock mx of u=0
+10223599: Thread (0, 2) locked mx of u=0
+10351528: Thread (0, 2) trying to lock mx of v=2
+10500240: Thread (0, 2) locked mx of v=2
+FORWARD EDGE (0, 2)
+10122839: -> thread: (0, 1) restarts, sem: 1
+10705905: Thread (0, 2) has remaining capacity <= 0: 0
+10821366: -> (aft) nb: 0, ng: 5
+10930255: cv_nodes: Thread (0, 2) UNlocked mx of u=0
+11056155: (2) thread (0, 1) gets out of cv
+11067124: (2) thread (1, 2) checks cv
+11063262: cv_nodes: Thread (0, 2) UNlocked mx of v=2
+11151859: Thread (0, 1) trying to lock mx of u=0
+11218299: -> (bef) nb: 0, ng: 5
+11290710: thread (0, 2) starts spawning
+11342093: Thread (0, 1) locked mx of u=0
+11430789: -> thread: (1, 2) restarts, sem: 1
+11628723: -> (aft) nb: 0, ng: 6
+11703171: (2) thread (1, 2) gets out of cv
+11569423: Thread (0, 1) trying to lock mx of v=1
+11847743: Thread (0, 1) locked mx of v=1
+11770999: Thread (1, 2) trying to lock mx of u=1
+11723365: (2) thread (1, 3) checks cv
+FORWARD EDGE (0, 1)
+12068820: -> (bef) nb: 0, ng: 6
+12141967: Thread (0, 1) setting label of node 1
+12211806: -> thread: (1, 3) restarts, sem: 1
+12316196: cv_nodes: Thread (0, 1) UNlocked mx of u=0
+12319309: -> (aft) nb: 0, ng: 6
+12379434: cv_nodes: Thread (0, 1) UNlocked mx of v=1
+12438857: thread (0, 1) starts spawning
+12388664: Thread (1, 2) locked mx of u=1
+12536277: thread (0, 1) finished spawning; nb: 0 ng: 6
+12543514: Thread (1, 2) trying to lock mx of v=2
+12615544: (2) thread (0, 1) will block on cv, nb: 0 ng: 6
+12680847: Thread (1, 2) locked mx of v=2
+12741200: (2) thread (0, 1) checks cv
+12413742: (2) thread (1, 3) gets out of cv
+FORWARD EDGE (1, 2)
+12976262: (enter) I am tid: 139626463360576 with edge: (2, 1) 
+12939865: thread (0, 2) generated thread (2, 1)
+12951203: Thread (1, 3) trying to lock mx of u=1
+12872847: -> (bef) nb: 0, ng: 6
+13021533: Thread (1, 2) setting label of node 2
+13142326: Thread (2, 1) trying to lock mx of v=1
+13503841: cv_nodes: Thread (1, 2) UNlocked mx of u=1
+13368034: -> thread (0, 1) stops, sem: 0
+FORWARD EDGE (2, 3)
+13686621: -> (aft) nb: 1, ng: 6
+13720618: Thread (2, 3) setting label of node 3
+13220078: thread (0, 2) finished spawning; nb: 0 ng: 6
+13541566: Thread (1, 3) locked mx of u=1
+13633892: cv_nodes: Thread (1, 2) UNlocked mx of v=2
+13833487: cv_nodes: Thread (2, 3) UNlocked mx of u=2
+13904419: signal to Waiting I am the last, T(0, 2)
+13970743: Thread (1, 3) trying to lock mx of v=3
+14264004: (2) thread (0, 1) checks cv
+14142136: cv_nodes: Thread (2, 3) UNlocked mx of v=3
+14251906: i'm a thread (0, 2) and joining thread: 139626482218560
+14056537: thread (1, 2) starts spawning
+14362311: Thread (1, 3) locked mx of v=3
+14372070: -> (bef) nb: 1, ng: 6
+14739500: Thread (2, 1) locked mx of v=1
+14637453: thread (1, 2) finished spawning; nb: 1 ng: 6
+14729678: cv_nodes: Thread (1, 3) UNlocked mx of u=1
+14438324: I am the augmenter thread (2, 3)
+14797274: -> thread: (0, 1) restarts, sem: 1
+14871966: Thread (2, 1) trying to lock mx of u=2
+14963700: (2) thread (1, 2) will block on cv, nb: 1 ng: 6
+15038436: cv_nodes: Thread (1, 3) UNlocked mx of v=3
+15119753: *. Augmenter edge: (2, 3) is waiting on cv augment
+15189417: -> (aft) nb: 1, ng: 6
+15280635: Thread (2, 1) locked mx of u=2
+15639601: (2) thread (1, 2) checks cv
+15631948: (2) thread (0, 1) gets out of cv
+15468320: (2) thread (1, 3) will block on cv, nb: 1 ng: 6
+15668596: cv_nodes: Thread (2, 1) UNlocked mx of u=2
+15719644: -> (bef) nb: 1, ng: 6
+15800235: i'm a thread (0, 1) and joining thread: 139626490611264
+15937745: cv_nodes: Thread (2, 1) UNlocked mx of v=1
+16007688: -> thread (1, 2) stops, sem: 0
+16241558: thread (2, 1) starts spawning
+16301217: -> (aft) nb: 2, ng: 6
+16371619: thread (2, 1) finished spawning; nb: 2 ng: 6
+16489900: thread (2, 3), nb: 2 ng: 6
+16493447: (2) thread (2, 1) will block on cv, nb: 2 ng: 6
+16669654: (2) thread (1, 3) checks cv
+16744145: -> (bef) nb: 2, ng: 6
+16812506: -> thread (1, 3) stops, sem: 0
+16861139: -> (aft) nb: 3, ng: 6
+16944565: (2) thread (2, 1) checks cv
+17026156: -> (bef) nb: 3, ng: 6
+17080020: -> thread (2, 1) stops, sem: 0
+17138593: -> (aft) nb: 4, ng: 6
+
+-------------------------------------
+Number of nodes: 4
+Graph read with nodes: 
+0 1 2 3 
+starting
+1213462: (enter) I am tid: 140143156520512 with edge: (0, 1) 
+1562752: Thread (0, 1) trying to lock mx of u=0
+1647249: Thread (0, 1) locked mx of u=0
+1714806: Thread (0, 1) trying to lock mx of v=1
+1771508: Thread (0, 1) locked mx of v=1
+FORWARD EDGE (0, 1)
+1880364: Thread (0, 1) setting label of node 1
+1943791: cv_nodes: Thread (0, 1) UNlocked mx of u=0
+1994718: cv_nodes: Thread (0, 1) UNlocked mx of v=1
+2340111: thread (0, 1) starts spawning
+1968733: num threads to join in solve: 2
+2434786: (enter) I am tid: 140143148127808 with edge: (0, 2) 
+2721355: Thread (0, 2) trying to lock mx of u=0
+2770590: Thread (0, 2) locked mx of u=0
+2823206: Thread (0, 2) trying to lock mx of v=2
+2871889: Thread (0, 2) locked mx of v=2
+FORWARD EDGE (0, 2)
+3012559: Thread (0, 2) setting label of node 2
+3070514: cv_nodes: Thread (0, 2) UNlocked mx of u=0
+3129911: cv_nodes: Thread (0, 2) UNlocked mx of v=2
+3186460: thread (0, 2) starts spawning
+3475216: thread (0, 1) generated thread (1, 2)
+3614970: (enter) I am tid: 140143139735104 with edge: (1, 2) 
+3670634: Thread (1, 2) trying to lock mx of u=1
+3722121: Thread (1, 2) locked mx of u=1
+3841049: Thread (1, 2) trying to lock mx of v=2
+3903561: Thread (1, 2) locked mx of v=2
+3959650: cv_nodes: Thread (1, 2) UNlocked mx of u=1
+4017745: cv_nodes: Thread (1, 2) UNlocked mx of v=2
+4092603: thread (1, 2) starts spawning
+4144220: thread (1, 2) finished spawning; nb: 0 ng: 5
+4200572: (2) thread (1, 2) will block on cv, nb: 0 ng: 5
+4265642: (2) thread (1, 2) checks cv
+4338140: -> (bef) nb: 0, ng: 5
+4533524: -> thread (1, 2) stops, sem: 0
+4635795: -> (aft) nb: 1, ng: 5
+5041524: thread (0, 2) generated thread (2, 3)
+5146664: thread (0, 1) generated thread (1, 3)
+5229019: (enter) I am tid: 140143122949696 with edge: (1, 3) 
+5170367: thread (0, 2) finished spawning; nb: 1 ng: 5
+5077644: (enter) I am tid: 140143131342400 with edge: (2, 3) 
+5265858: thread (0, 1) finished spawning; nb: 1 ng: 5
+5540458: Thread (2, 3) trying to lock mx of u=2
+5567015: Thread (2, 3) locked mx of u=2
+5438057: (2) thread (0, 2) will block on cv, nb: 1 ng: 5
+5372411: Thread (1, 3) trying to lock mx of u=1
+5858064: Thread (1, 3) locked mx of u=1
+5885749: Thread (1, 3) trying to lock mx of v=3
+5911358: Thread (1, 3) locked mx of v=3
+5584678: (2) thread (0, 1) will block on cv, nb: 1 ng: 5
+5664768: Thread (2, 3) trying to lock mx of v=3
+5741101: (2) thread (0, 2) checks cv
+6320515: -> (bef) nb: 1, ng: 5
+FORWARD EDGE (1, 3)
+6387158: -> thread (0, 2) stops, sem: 0
+6470412: Thread (1, 3) setting label of node 3
+6529224: -> (aft) nb: 2, ng: 5
+6599966: cv_nodes: Thread (1, 3) UNlocked mx of u=1
+6773705: cv_nodes: Thread (1, 3) UNlocked mx of v=3
+6837745: I am the augmenter thread (1, 3)
+6775709: (2) thread (0, 1) checks cv
+6946541: *. Augmenter edge: (1, 3) is waiting on cv augment
+6792070: Thread (2, 3) locked mx of v=3
+7008506: -> (bef) nb: 2, ng: 5
+7189918: -> thread (0, 1) stops, sem: 0
+7070485: cv_nodes: Thread (2, 3) UNlocked mx of u=2
+7217703: -> (aft) nb: 3, ng: 5
+7300661: cv_nodes: Thread (2, 3) UNlocked mx of v=3
+7444562: (2) thread (2, 3) will block on cv, nb: 3 ng: 5
+7461777: thread (1, 3), nb: 3 ng: 5
+7662438: (2) thread (2, 3) checks cv
+7727866: -> (bef) nb: 3, ng: 5
+7779442: -> thread (2, 3) stops, sem: 0
+7866687: -> (aft) nb: 4, ng: 5
+8011153: thread (1, 3), nb: 4 ng: 5
+8072468: *. Augmenter - edge: (1, 3) gets out of cv augment
+8132779: augmented flow: 3
+8245465: reset labels
+8377212: (2) thread (1, 2) checks cv
+8436209: Thread (1, 3) trying to lock mx of u=1
+8443843: -> (bef) nb: 0, ng: 5
+8513061: Thread (1, 3) locked mx of u=1
+8591149: -> thread: (1, 2) restarts, sem: 1
+8669981: Thread (1, 3) trying to lock mx of v=3
+8748481: -> (aft) nb: 0, ng: 5
+8854540: Thread (1, 3) locked mx of v=3
+8981178: (2) thread (0, 2) checks cv
+9090410: -> (bef) nb: 0, ng: 5
+8946004: (2) thread (1, 2) gets out of cv
+9329574: Thread (1, 2) trying to lock mx of u=1
+9180339: -> thread: (0, 2) restarts, sem: 1
+9360167: Thread (1, 2) locked mx of u=1
+9513424: Thread (1, 2) trying to lock mx of v=2
+9433997: -> (aft) nb: 0, ng: 5
+9749251: Thread (1, 2) locked mx of v=2
+9879354: (2) thread (0, 2) gets out of cv
+9908078: Thread (0, 2) trying to lock mx of u=0
+9959410: (2) thread (0, 1) checks cv
+9973795: Thread (0, 2) locked mx of u=0
+10044340: -> (bef) nb: 0, ng: 5
+10122550: Thread (0, 2) trying to lock mx of v=2
+10234292: -> thread: (0, 1) restarts, sem: 1
+10389192: -> (aft) nb: 0, ng: 5
+10466618: (2) thread (0, 1) gets out of cv
+10548011: Thread (0, 1) trying to lock mx of u=0
+10485655: (2) thread (2, 3) checks cv
+10332883: Thread (0, 2) locked mx of v=2
+FORWARD EDGE (0, 2)
+10866313: Thread (0, 2) setting label of node 2
+10706733: -> (bef) nb: 0, ng: 5
+10998022: -> thread: (2, 3) restarts, sem: 1
+11032674: -> (aft) nb: 0, ng: 5
+11058076: cv_nodes: Thread (0, 2) UNlocked mx of u=0
+11073574: Thread (0, 1) locked mx of u=0
+11131662: (2) thread (2, 3) gets out of cv
+11242972: cv_nodes: Thread (0, 2) UNlocked mx of v=2
+BACKWARD EDGE (1, 2)
+11332501: Thread (0, 1) trying to lock mx of v=1
+11427457: Thread (2, 3) trying to lock mx of u=2
+11510423: thread (0, 2) starts spawning
+11598890: Thread (1, 2) has edge flow <= 0: 0
+11983577: cv_nodes: Thread (1, 2) UNlocked mx of u=1
+12005010: Thread (0, 1) locked mx of v=1
+12065426: cv_nodes: Thread (1, 2) UNlocked mx of v=2
+FORWARD EDGE (0, 1)
+12155499: thread (1, 2) starts spawning
+12156060: Thread (0, 1) setting label of node 1
+12179949: thread (1, 2) finished spawning; nb: 0 ng: 6
+12206737: (2) thread (1, 2) will block on cv, nb: 0 ng: 6
+12227004: (2) thread (1, 2) checks cv
+12229013: cv_nodes: Thread (0, 1) UNlocked mx of u=0
+12241904: -> (bef) nb: 0, ng: 6
+12260366: -> thread (1, 2) stops, sem: 0
+12284111: -> (aft) nb: 1, ng: 6
+12283415: cv_nodes: Thread (0, 1) UNlocked mx of v=1
+12320082: thread (0, 1) starts spawning
+12342656: thread (0, 1) finished spawning; nb: 1 ng: 6
+12368635: (2) thread (0, 1) will block on cv, nb: 1 ng: 6
+12394054: (2) thread (0, 1) checks cv
+12412276: -> (bef) nb: 1, ng: 6
+12429261: -> thread (0, 1) stops, sem: 0
+12446816: -> (aft) nb: 2, ng: 6
+FORWARD EDGE (1, 3)
+13818901: Thread (2, 3) locked mx of u=2
+13948669: Thread (1, 3) has remaining capacity <= 0: 0
+14089576: Thread (2, 3) trying to lock mx of v=3
+14203816: cv_nodes: Thread (1, 3) UNlocked mx of u=1
+14404811: Thread (2, 3) locked mx of v=3
+14386807: cv_nodes: Thread (1, 3) UNlocked mx of v=3
+FORWARD EDGE (2, 3)
+14564627: (2) thread (1, 3) will block on cv, nb: 2 ng: 6
+14615047: Thread (2, 3) setting label of node 3
+14699071: (2) thread (1, 3) checks cv
+14866052: -> (bef) nb: 2, ng: 6
+14934344: -> thread (1, 3) stops, sem: 0
+14798705: cv_nodes: Thread (2, 3) UNlocked mx of u=2
+15006093: -> (aft) nb: 3, ng: 6
+15088790: cv_nodes: Thread (2, 3) UNlocked mx of v=3
+15233692: I am the augmenter thread (2, 3)
+15247116: *. Augmenter edge: (2, 3) is waiting on cv augment
+15259972: thread (2, 3), nb: 3 ng: 6
+16722213: thread (0, 2) generated thread (2, 1)
+16726093: (enter) I am tid: 140143112484416 with edge: (2, 1) 
+16996860: (1) thread (2, 1) will block on cv, nb: 3 ng: 6
+16866658: thread (0, 2) finished spawning; nb: 3 ng: 6
+17092295: (1) thread (2, 1) checks cv
+17235833: (2) thread (0, 2) will block on cv, nb: 3 ng: 6
+17317183: -> (bef) nb: 3, ng: 6
+17567464: -> thread (2, 1) stops, sem: 0
+17634584: -> (aft) nb: 4, ng: 6
+17767291: (2) thread (0, 2) checks cv
+17834701: -> (bef) nb: 4, ng: 6
+17850477: -> thread (0, 2) stops, sem: 0
+17893282: -> (aft) nb: 5, ng: 6
+18043667: thread (2, 3), nb: 5 ng: 6
+18188314: *. Augmenter - edge: (2, 3) gets out of cv augment
+18265713: augmented flow: 3
+18340300: reset labels
+18490228: (2) thread (1, 2) checks cv
+18537219: Thread (2, 3) trying to lock mx of u=2
+18554595: -> (bef) nb: 0, ng: 6
+18570677: Thread (2, 3) locked mx of u=2
+18631693: -> thread: (1, 2) restarts, sem: 1
+18705269: Thread (2, 3) trying to lock mx of v=3
+18791067: -> (aft) nb: 0, ng: 6
+18897503: Thread (2, 3) locked mx of v=3
+18993176: (2) thread (1, 3) checks cv
+19023866: -> (bef) nb: 0, ng: 6
+18979172: (2) thread (1, 2) gets out of cv
+19105762: -> thread: (1, 3) restarts, sem: 1
+19295202: -> (aft) nb: 0, ng: 6
+19210829: Thread (1, 2) trying to lock mx of u=1
+19367085: (2) thread (1, 3) gets out of cv
+19384549: (2) thread (0, 1) checks cv
+19440386: Thread (1, 2) locked mx of u=1
+19675351: Thread (1, 2) trying to lock mx of v=2
+19715429: Thread (1, 2) locked mx of v=2
+19519464: Thread (1, 3) trying to lock mx of u=1
+19586826: -> (bef) nb: 0, ng: 6
+19892446: -> thread: (0, 1) restarts, sem: 1
+20013071: -> (aft) nb: 0, ng: 6
+19800263: Thread (1, 3) locked mx of u=1
+20138487: (1) thread (2, 1) checks cv
+20190064: -> (bef) nb: 0, ng: 6
+20190285: Thread (1, 3) trying to lock mx of v=3
+20237425: -> thread: (2, 1) restarts, sem: 1
+20438977: -> (aft) nb: 0, ng: 6
+20324152: Thread (1, 3) locked mx of v=3
+20089758: (2) thread (0, 1) gets out of cv
+20688744: Thread (0, 1) trying to lock mx of u=0
+20781304: Thread (0, 1) locked mx of u=0
+20861934: Thread (0, 1) trying to lock mx of v=1
+20510126: (1)  edge: (2, 1) gets out of cv
+20957821: Thread (0, 1) locked mx of v=1
+21104033: Thread (2, 1) trying to lock mx of v=1
+FORWARD EDGE (0, 1)
+21130359: (2) thread (0, 2) checks cv
+21277499: Thread (0, 1) setting label of node 1
+21364201: -> (bef) nb: 0, ng: 6
+21497661: -> thread: (0, 2) restarts, sem: 1
+21553842: -> (aft) nb: 0, ng: 6
+21608209: cv_nodes: Thread (0, 1) UNlocked mx of u=0
+21612973: (2) thread (0, 2) gets out of cv
+21739031: cv_nodes: Thread (0, 1) UNlocked mx of v=1
+21742671: Thread (0, 2) trying to lock mx of u=0
+21774219: Thread (0, 2) locked mx of u=0
+21752219: Thread (2, 1) locked mx of v=1
+21779387: thread (0, 1) starts spawning
+21851660: Thread (0, 2) trying to lock mx of v=2
+21934154: Thread (2, 1) trying to lock mx of u=2
+22024380: thread (0, 1) finished spawning; nb: 0 ng: 6
+22101613: Thread (0, 2) locked mx of v=2
+22267032: (2) thread (0, 1) will block on cv, nb: 0 ng: 6
+22455840: (2) thread (0, 1) checks cv
+FORWARD EDGE (0, 2)
+22614963: Thread (0, 2) has remaining capacity <= 0: 0
+22704941: cv_nodes: Thread (0, 2) UNlocked mx of u=0
+22596688: -> (bef) nb: 0, ng: 6
+22853212: Thread (2, 1) locked mx of u=2
+22815965: cv_nodes: Thread (0, 2) UNlocked mx of v=2
+23027068: thread (0, 2) starts spawning
+23092822: thread (0, 2) finished spawning; nb: 0 ng: 6
+23155909: (2) thread (0, 2) will block on cv, nb: 0 ng: 6
+BACKWARD EDGE (2, 1)
+23414800: Thread (2, 1) has edge flow <= 0: 0
+23475805: cv_nodes: Thread (2, 1) UNlocked mx of u=2
+23589149: cv_nodes: Thread (2, 1) UNlocked mx of v=1
+22882160: -> thread (0, 1) stops, sem: 0
+23615167: thread (2, 1) starts spawning
+23628976: thread (2, 1) finished spawning; nb: 1 ng: 6
+23628373: -> (aft) nb: 1, ng: 6
+FORWARD EDGE (1, 2)
+23751577: (2) thread (0, 2) checks cv
+23642601: signal to Waiting I am the last, T(2, 1)
+23775036: Thread (1, 2) setting label of node 2
+23832047: -> (bef) nb: 1, ng: 6
+24132739: cv_nodes: Thread (1, 2) UNlocked mx of u=1
+23978717: (return) end of thread (2, 1)
+24162190: cv_nodes: Thread (1, 2) UNlocked mx of v=2
+24226903: (return) end of thread (1, 3)
+24375948: thread (1, 2) starts spawning
+24410230: thread (1, 2) finished spawning; nb: 1 ng: 5
+24162724: -> thread (0, 2) stops, sem: 0
+24625019: -> (aft) nb: 2, ng: 4
+24249173: (return) end of thread (2, 3)
+24721934: (2) thread (0, 1) checks cv
+24748990: -> (bef) nb: 2, ng: 4
+24508224: (2) thread (1, 2) will block on cv, nb: 1 ng: 4
+24845882: -> thread: (0, 1) restarts, sem: 1
+24998704: -> (aft) nb: 2, ng: 3
+25097403: (2) thread (0, 1) gets out of cv
+25125172: (2) thread (1, 2) checks cv
+25162548: -> (bef) nb: 2, ng: 3
+25147424: i'm a thread (0, 1) and joining thread: 140143139735104
+25233260: -> thread (1, 2) stops, sem: 0
+25470520: -> (aft) nb: 3, ng: 3
+
+
+when a thread is waiting bc has no label
+create an array of nodes with bool id there is a label for that node
+every time a label is added to a node, set to true the slot with index = node
+create an array of nodes for which threads are blocked
+every time a thread enters the waiting state, bc has no label, set that node to true
+
+array 1 -> node 0 | node 1| node 2 | node 3| ...
+array 2 -> node 0 | node 1| node 2 | node 3| ...
+
+when a thread enters waiting, set its nodes in array 1 to true
+when a label is set to a node, set that node in array 2 to true
+
+when a thread wants to end and has to check if it is the last 1 running worker and no waiting can be unblocked:
+call func that checks for each index in array 1 and array 2 if there is a node that has a label set and there is a thread waiting for that node
+i.e. if arr1[i] != arr2[i] -> not last worker node, there will be some waiting that is about to unblock
+     else if for every i, arr1[i]==arr2[i] -> then this worker is the last one
+
+
+ievery time a thread is about to end, need to understand if that thread is the last one that is running
+and all the other threads are waiting without having any waiting that could be unblocked due to a signal arriving libsanitizer
+
+at the time of T that is about to end, do
+call a func to check if there is some label that was set and there is a waiting thread for that label
+if there is a waiting thread, at that time, then that thread would unblock
+
+create an array of N elements = # nodes
+when a thread has none of its nodes with a label
+in the array set those nodes as true, i.e. nodes for which 1 or more thread is blocked
+
+when a label is set, call a func to check if in the array there is a
+
+
+
+WARNING: ThreadSanitizer: lock-order-inversion (potential deadlock) (pid=221375)
+  Cycle in lock order graph: M46 (0x7fffad7094f8) => M41 (0x7b3c000001f8) => M46
+
+  Mutex M41 acquired here while holding mutex M46 in thread T3:
+    #0 pthread_mutex_lock ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors.inc:4240 (libtsan.so.0+0x53908)
+    #1 __gthread_mutex_lock /usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:749 (MaxFlowSolverP+0x5d37)
+    #2 std::mutex::lock() /usr/include/c++/11/bits/std_mutex.h:100 (MaxFlowSolverP+0x601c)
+    #3 Node::lockSharedMutex() /home/giosilve/Maximum-Flow-Problem/src/NodeFirst.hpp:154 (MaxFlowSolverP+0x6dae)
+    #4 MaxFlowSolverParallel::thread_function(int, int, Edge*)::{lambda()#2}::operator()() const /home/giosilve/Maximum-Flow-Problem/src/MaxFlowSolverParallel.hpp:452 (MaxFlowSolverP+0x88c2)
+    #5 void std::condition_variable::wait<MaxFlowSolverParallel::thread_function(int, int, Edge*)::{lambda()#2}>(std::unique_lock<std::mutex>&, MaxFlowSolverParallel::thread_function(int, int, Edge*)::{lambda()#2}) /usr/include/c++/11/condition_variable:102 (MaxFlowSolverP+0xc986)
+    #6 MaxFlowSolverParallel::thread_function(int, int, Edge*) /home/giosilve/Maximum-Flow-Problem/src/MaxFlowSolverParallel.hpp:435 (MaxFlowSolverP+0x934f)
+    #7 void std::__invoke_impl<void, void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>(std::__invoke_memfun_deref, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&&) /usr/include/c++/11/bits/invoke.h:74 (MaxFlowSolverP+0x1583f)
+    #8 std::__invoke_result<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>::type std::__invoke<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>(void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&&) /usr/include/c++/11/bits/invoke.h:96 (MaxFlowSolverP+0x155d8)
+    #9 void std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> >::_M_invoke<0ul, 1ul, 2ul, 3ul, 4ul>(std::_Index_tuple<0ul, 1ul, 2ul, 3ul, 4ul>) /usr/include/c++/11/bits/std_thread.h:259 (MaxFlowSolverP+0x153bc)
+    #10 std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> >::operator()() /usr/include/c++/11/bits/std_thread.h:266 (MaxFlowSolverP+0x152f0)
+    #11 std::thread::_State_impl<std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> > >::_M_run() /usr/include/c++/11/bits/std_thread.h:211 (MaxFlowSolverP+0x152a2)
+    #12 <null> <null> (libstdc++.so.6+0xdc252)
+
+    Hint: use TSAN_OPTIONS=second_deadlock_stack=1 to get more informative warning message
+
+  Mutex M46 acquired here while holding mutex M41 in thread T4:
+    #0 pthread_cond_wait ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:1176 (libtsan.so.0+0x654e8)
+    #1 void std::condition_variable::wait<MaxFlowSolverParallel::thread_function(int, int, Edge*)::{lambda()#2}>(std::unique_lock<std::mutex>&, MaxFlowSolverParallel::thread_function(int, int, Edge*)::{lambda()#2}) /usr/include/c++/11/condition_variable:103 (MaxFlowSolverP+0xc97d)
+    #2 MaxFlowSolverParallel::thread_function(int, int, Edge*) /home/giosilve/Maximum-Flow-Problem/src/MaxFlowSolverParallel.hpp:435 (MaxFlowSolverP+0x934f)
+    #3 void std::__invoke_impl<void, void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>(std::__invoke_memfun_deref, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&&) /usr/include/c++/11/bits/invoke.h:74 (MaxFlowSolverP+0x1583f)
+    #4 std::__invoke_result<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>::type std::__invoke<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>(void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&&) /usr/include/c++/11/bits/invoke.h:96 (MaxFlowSolverP+0x155d8)
+    #5 void std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> >::_M_invoke<0ul, 1ul, 2ul, 3ul, 4ul>(std::_Index_tuple<0ul, 1ul, 2ul, 3ul, 4ul>) /usr/include/c++/11/bits/std_thread.h:259 (MaxFlowSolverP+0x153bc)
+    #6 std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> >::operator()() /usr/include/c++/11/bits/std_thread.h:266 (MaxFlowSolverP+0x152f0)
+    #7 std::thread::_State_impl<std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> > >::_M_run() /usr/include/c++/11/bits/std_thread.h:211 (MaxFlowSolverP+0x152a2)
+    #8 <null> <null> (libstdc++.so.6+0xdc252)
+
+  Thread T3 (tid=221379, running) created by thread T1 at:
+    #0 pthread_create ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:969 (libtsan.so.0+0x605b8)
+    #1 std::thread::_M_start_thread(std::unique_ptr<std::thread::_State, std::default_delete<std::thread::_State> >, void (*)()) <null> (libstdc++.so.6+0xdc328)
+    #2 void __gnu_cxx::new_allocator<std::thread>::construct<std::thread, void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*&>(std::thread*, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&) /usr/include/c++/11/ext/new_allocator.h:162 (MaxFlowSolverP+0x108c7)
+    #3 void std::allocator_traits<std::allocator<std::thread> >::construct<std::thread, void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*&>(std::allocator<std::thread>&, std::thread*, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&) /usr/include/c++/11/bits/alloc_traits.h:516 (MaxFlowSolverP+0xeab1)
+    #4 void std::vector<std::thread, std::allocator<std::thread> >::_M_realloc_insert<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*&>(__gnu_cxx::__normal_iterator<std::thread*, std::vector<std::thread, std::allocator<std::thread> > >, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&) /usr/include/c++/11/bits/vector.tcc:449 (MaxFlowSolverP+0xec4f)
+    #5 std::thread& std::vector<std::thread, std::allocator<std::thread> >::emplace_back<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*&>(void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&) /usr/include/c++/11/bits/vector.tcc:121 (MaxFlowSolverP+0xc820)
+    #6 MaxFlowSolverParallel::thread_function(int, int, Edge*) /home/giosilve/Maximum-Flow-Problem/src/MaxFlowSolverParallel.hpp:704 (MaxFlowSolverP+0xa078)
+    #7 void std::__invoke_impl<void, void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>(std::__invoke_memfun_deref, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&&) /usr/include/c++/11/bits/invoke.h:74 (MaxFlowSolverP+0x1583f)
+    #8 std::__invoke_result<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>::type std::__invoke<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>(void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&&) /usr/include/c++/11/bits/invoke.h:96 (MaxFlowSolverP+0x155d8)
+    #9 void std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> >::_M_invoke<0ul, 1ul, 2ul, 3ul, 4ul>(std::_Index_tuple<0ul, 1ul, 2ul, 3ul, 4ul>) /usr/include/c++/11/bits/std_thread.h:259 (MaxFlowSolverP+0x153bc)
+    #10 std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> >::operator()() /usr/include/c++/11/bits/std_thread.h:266 (MaxFlowSolverP+0x152f0)
+    #11 std::thread::_State_impl<std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> > >::_M_run() /usr/include/c++/11/bits/std_thread.h:211 (MaxFlowSolverP+0x152a2)
+    #12 <null> <null> (libstdc++.so.6+0xdc252)
+
+  Thread T4 (tid=221380, running) created by thread T2 at:
+    #0 pthread_create ../../../../src/libsanitizer/tsan/tsan_interceptors_posix.cpp:969 (libtsan.so.0+0x605b8)
+    #1 std::thread::_M_start_thread(std::unique_ptr<std::thread::_State, std::default_delete<std::thread::_State> >, void (*)()) <null> (libstdc++.so.6+0xdc328)
+    #2 void __gnu_cxx::new_allocator<std::thread>::construct<std::thread, void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*&>(std::thread*, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&) /usr/include/c++/11/ext/new_allocator.h:162 (MaxFlowSolverP+0x108c7)
+    #3 void std::allocator_traits<std::allocator<std::thread> >::construct<std::thread, void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*&>(std::allocator<std::thread>&, std::thread*, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&) /usr/include/c++/11/bits/alloc_traits.h:516 (MaxFlowSolverP+0xeab1)
+    #4 void std::vector<std::thread, std::allocator<std::thread> >::_M_realloc_insert<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*&>(__gnu_cxx::__normal_iterator<std::thread*, std::vector<std::thread, std::allocator<std::thread> > >, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&) /usr/include/c++/11/bits/vector.tcc:449 (MaxFlowSolverP+0xec4f)
+    #5 std::thread& std::vector<std::thread, std::allocator<std::thread> >::emplace_back<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*&>(void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&) /usr/include/c++/11/bits/vector.tcc:121 (MaxFlowSolverP+0xc820)
+    #6 MaxFlowSolverParallel::thread_function(int, int, Edge*) /home/giosilve/Maximum-Flow-Problem/src/MaxFlowSolverParallel.hpp:704 (MaxFlowSolverP+0xa078)
+    #7 void std::__invoke_impl<void, void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>(std::__invoke_memfun_deref, void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&&) /usr/include/c++/11/bits/invoke.h:74 (MaxFlowSolverP+0x1583f)
+    #8 std::__invoke_result<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>::type std::__invoke<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*>(void (MaxFlowSolverParallel::*&&)(int, int, Edge*), MaxFlowSolverParallel*&&, int&&, int&&, Edge*&&) /usr/include/c++/11/bits/invoke.h:96 (MaxFlowSolverP+0x155d8)
+    #9 void std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> >::_M_invoke<0ul, 1ul, 2ul, 3ul, 4ul>(std::_Index_tuple<0ul, 1ul, 2ul, 3ul, 4ul>) /usr/include/c++/11/bits/std_thread.h:259 (MaxFlowSolverP+0x153bc)
+    #10 std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> >::operator()() /usr/include/c++/11/bits/std_thread.h:266 (MaxFlowSolverP+0x152f0)
+    #11 std::thread::_State_impl<std::thread::_Invoker<std::tuple<void (MaxFlowSolverParallel::*)(int, int, Edge*), MaxFlowSolverParallel*, int, int, Edge*> > >::_M_run() /usr/include/c++/11/bits/std_thread.h:211 (MaxFlowSolverP+0x152a2)
+    #12 <null> <null> (libstdc++.so.6+0xdc252)
+
+SUMMARY: ThreadSanitizer: lock-order-inversion (potential deadlock) /usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:749 in __gthread_mutex_lock

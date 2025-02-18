@@ -154,6 +154,10 @@ class Node {
             this->mx_node.lock();
         }
 
+        mutex& getSharedMutex() {
+            return this->mx_node;
+        }
+
 
         /**
          * Releases the shared lock on the node's mutex, allowing other threads to write to the node's data.
