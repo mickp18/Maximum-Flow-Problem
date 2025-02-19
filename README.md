@@ -30,6 +30,24 @@ cmds for SEQ
 PAR
 cmds for PAR
 
+## Commands
+
+Run the following commands in a Linux environment to compile and run the program from the root directory:
+
+- To compile sequential version: 
+`./scripts/run_FF_seq.sh [input file] [output file]`  
+Example: `./scripts/run_FF_seq.sh airports_500_dag.txt output.txt`
+- To run sequential version:
+`./src/MaxFlowSolver ./input/[input file] ./output/[output file]`  
+Example: `./src/MaxFlowSolver ./inputs/dag_1000_6000.txt ./output/output.txt`  
+
+- To compile parallel version: 
+`./scripts/run_FF_par.sh`  
+Example: `./scripts/run_FF_par.sh airports_500_dag.txt output.txt`  
+- To run parallel version:
+`./src/MaxFlowSolverPP ./input/[input file] ./output/[output file]`  
+Example: `./src/MaxFlowSolverPP ./inputs/dag_1000_6000.txt ./output/output.txt`
+
 <!-- command to run in the Terminal:
 ./scripts/run.sh airports_500_dag.txt result.txt -->  
 
@@ -278,9 +296,9 @@ The purpose of this function is to block the calling thread until all tasks in t
 9. `void notify()`: notifies all threads waiting on the mutex_condition condition variable, allowing them to wake up and continue execution.
 
 
-#### Class NodeFirst
+#### Class Node
 
-The `NodeFirst` class represents a node in a graph, with attributes such as an ID, a label, and synchronization primitives for thread-safety.
+The `Node` class represents a node in a graph, with attributes such as an ID, a label, and synchronization primitives for thread-safety.
 
 ##### Attributes
 
@@ -290,12 +308,10 @@ The `NodeFirst` class represents a node in a graph, with attributes such as an I
 4. `mx_node`: a mutex (mutual exclusion lock) used to protect access to the node's data.
 5. `mx_cv`: a condition variable used to signal threads waiting on the node's condition variable.
 6. `cv`: a condition variable used to wait on the node's condition variable.
-7. `mx_label`: This mutex is used to protect access to the node's label struct (label_t). 
-8. `mx_label_reset`: This mutex is used to protect access to the node's label reset operation.
 
 ##### Methods
 
-1. Constructor `NodeFirst(int id)`: Initializes a new node with the given ID and sets its label to an empty struct.
+1. Constructor `Node(int id)`: Initializes a new node with the given ID and sets its label to an empty struct.
 2. `getId()`: Returns the node's ID.
 3. `setLabel(int pred_id, char sign, long labelflow)`: Sets the node's label based on the given predecessor node ID, sign, and flow value.
 4. `resetLabel()`: Resets the node's label to an empty struct and sets the labeled flag to false.
