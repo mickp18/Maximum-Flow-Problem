@@ -23,7 +23,7 @@ using namespace std;
 ofstream tmpfout;
 //void reorderFile(const std::string &inputFile, const std::string &outputFile);
 
-class MaxFlowSolverParallel
+class MaxFlowSolverParallelPool
 {
 private:
     // INPUTS
@@ -78,7 +78,7 @@ private:
     atomic<int> pending_jobs{0}; // Track total active jobs
 public:
     // constructor
-    MaxFlowSolverParallel(string input_file_path)
+    MaxFlowSolverParallelPool(string input_file_path)
     {
         this->input_file_path = input_file_path;
         this->max_flow = 0;
