@@ -1,3 +1,6 @@
+
+
+
 # Maximum-Flow-Problem
 WELCOME TEXT ANF GENEREAL INFO
 Welcome, this is a project in C++ reg te MAX FLOW PROBLEM, solved with FF, 2 implemenetations 
@@ -30,6 +33,28 @@ cmds for SEQ
 PAR
 cmds for PAR
 
+## Graph Datasets for Testing
+
+| Dataset             | # Nodes      | # Edges        | Max Flow          |
+|:--------------------|-------------:|---------------:| ----------------: |
+|second_test          | 3            | 3              | 3                 |
+|florida              | 7            | 5              | 7                 |
+|airports_500_dag     | 500   (0.5K) | 2980    (3K)   | 13926      (14K)  |
+|dag_1000_2000        | 1000  (1K)   | 2000    (2K)   | 14                |
+|dag_1000_3000        | 1000  (1K)   | 2987    (3K)   | 51                |
+|dag_1000_6000        | 1000  (1K)   | 6000    (6K)   | 142        (0.1K) |
+|dag_1000_60000       | 1000  (1K)   | 59959   (60K)  | 5299       (5K)   |
+|dag_1000_30000       | 1000  (1K)   | 29097   (30K)  | 2173       (2K)   |
+|dag_1000_300000      | 1000  (1K)   | 225563  (250K) | 20108      (20K)  |
+|dag_5000_30000       | 5000  (5K)   | 29964   (30K)  | 307        (0.3K) |
+|dag_5000_60000       | 5000  (5K)   | 59837   (60K)  | 731        (0.7K) |
+|dag_5000_600000      | 5000  (5K)   | 585715  (600K) | 10434      (10K)  |
+|dag_10000_60000      | 10000 (10K)  | 59959   (60K)  | 133        (0.1K) |
+|dag_10000_600000     | 10000 (10K)  | 596388  (600K) | 5076       (5K)   |
+|dag_10000_1000000    | 10000 (10K)  | 989896  (1M)   | 9168       (9K)   |
+|dag_10000_6000000    | 10000 (10K)  | 5654501 (6M)   | 54796      (50K)  |
+|critical             | 4            | 5              | 2000000000 (2G)   |
+
 ## Commands
 
 Run the following commands in a Linux environment to compile and run the program from the root directory:
@@ -48,22 +73,7 @@ Example: `./scripts/run_FF_par.sh airports_500_dag.txt output.txt`
 `./src/MaxFlowSolverPP ./input/[input file] ./output/[output file]`  
 Example: `./src/MaxFlowSolverPP ./inputs/dag_1000_6000.txt ./output/output.txt`
 
-<!-- command to run in the Terminal:
-./scripts/run.sh airports_500_dag.txt result.txt -->  
-
 ## Ford-Fulkerson - SEQUENTIAL Version
-use adjacency list and BFS
-
-- how to run
-COMMAND to run on terminal
-run_FF_seq
-List of data structures
-List of classes
-List of files
-- classes: main.cpp, Edge.hpp, .....
-
-Documentation of classes and functions 
-...
 
 ### List of classes
 
@@ -165,8 +175,6 @@ The `Edge` class represents a directed edge in a flow network, with properties s
 
 
 ## Ford-Fulkerson -  PARALLEL Version
-- how to run
-run_FF_par
 
 ### List of classes
 
@@ -331,7 +339,35 @@ The `Node` class represents a node in a graph, with attributes such as an ID, a 
 The `Edge` class used in the parallel version of the Max Flow algorithm is the same class used for the sequential version. See above for further details.
 
 
-## TESTS PERFORMED and PERFORMANCE ANALYSIS
+## Tests Results and Performance Analysis
 
-table, with hardware concurrency = .....
-file name - # node - # edge - max flow - time SEQ - time PAR
+### Results
+
+The following table provides a summary of the time (in microseconds) taken by the sequential and parallel versions of the Max Flow algorithm on different datasets.
+
+| Dataset             | # Nodes      | # Edges        | Max Flow          | Time (micros) - Sequential | Time (micros) - Parallel (8 threads)|
+|:--------------------|-------------:|---------------:| ----------------: | -------------------------: | ----------------------------------: |
+|second_test          | 3            | 3              | 3                 | 2                          | 2804      (3 ms)                    |
+|florida              | 7            | 5              | 7                 | 7                          | 4439      (4 ms)                    |
+|airports_500_dag     | 500   (0.5K) | 2980    (0.5K) | 13926      (14K)  | 3026         (3.03 s)      | 21802     (22 s)                    |
+|dag_1000_2000        | 1000  (1K)   | 2000    (2K)   | 14                | 141                        | 6919      (7 ms)                    |
+|dag_1000_3000        | 1000  (1K)   | 2987    (3K)   | 51                | 745                        | 7186      (7 ms)                    |
+|dag_1000_6000        | 1000  (1K)   | 6000    (6K)   | 142        (0.1K) | 17665        (17.6 ms)     | 68250     (68 ms)                   |   
+|dag_1000_60000       | 1000  (1K)   | 59959   (60K)  | 5299       (5K)   | 132451986    (2.2 min)     | 166779    (166 ms)                  |
+|dag_1000_30000       | 1000  (1K)   | 29097   (30K)  | 2173       (2K)   | 22422245     (22.42 s)     | 3667745   (3.67s)                   |
+|dag_1000_300000      | 1000  (1K)   | 225563  (250K) | 20108      (20K)  | 1937035051   (32.2 min)    | 268964465 (4.48 min)                |
+|dag_5000_30000       | 5000  (5K)   | 29964   (30K)  | 307        (0.3K) | 368566       (0.37 s)      | 369560    (0.37 s)                  |
+|dag_5000_60000       | 5000  (5K)   | 59837   (60K)  | 731        (0.7K) | 10256613     (10.25 s)     | 2602841   (2.60 s)                  |
+|dag_5000_600000      | 5000  (5K)   | 585715  (600K) | 10434      (10K)  |                            | 500135551 (8.33 min)                |
+|dag_10000_60000      | 10000 (10K)  | 59959   (60K)  | 133        (0.1K) | 91574        (92 ms)       | 166779    (166 ms)                  |
+|dag_10000_600000     | 10000 (10K)  | 596388  (600K) | 5076       (5K)   | 1819786709   (30.3 min)    | 293312595 (4.88 min)                |
+|dag_10000_1000000    | 10000 (10K)  | 989896  (1M)   | 9168       (9K)   |                            | 890133587 (14.8 mins)               |
+|dag_10000_6000000    | 10000 (10K)  | 5654501 (6M)   | 54796      (50K)  |                            |                                     |
+|critical             | 4            | 5              | 2000000000 (2G)   | 8                          | 2847      (3 ms)                    |
+
+The tests were run on a machine with the following specifications:
+- Processor: Intel(R) Core(TM) i7-1065G7 CPU @ 1.30GHz
+- RAM: 16 GB
+- OS: Ubuntu (WSL 2 on Windows 11)  
+
+### Performance Analysis
