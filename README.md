@@ -1,37 +1,28 @@
+# Maximum Flow Problem
 
+In this project, the attention is directed on Ford-Fulkerson’s algorithm to solve the Maximum Flow Problem. A single-thread sequential version and a multi-thread parallel version of Ford-Fulkerson’s algorithm are implemented and tested on several graphs of different size in terms of number of nodes and number of edges and the performances of both versions are compared.
 
+## General Considerations on Flow Networks
 
-# Maximum-Flow-Problem
-WELCOME TEXT ANF GENEREAL INFO
-Welcome, this is a project in C++ reg te MAX FLOW PROBLEM, solved with FF, 2 implemenetations 
-Below you can find the benchamark files by us (with graph generator found in file `X.py`)
-At the end you can see the perfoarmances of the != programs run with specs.....
+Flow networks find applications in problems in which a graph models the flow of some material from a source node s to a destination node t (aka sink, tank) along pipes with each pipe having some capacity. The edges of the graph model the pipes in the network and the nodes of the graph model the junctions of the pipes. The edges are directed and weighted, each edge has a weight equal to its capacity i.e. the maximum amount of flow that could pass through that edge.
+Among all possible flows that could pass across a given flow network, there exists one flow value which is the maximum one that could pass through that network. The Maximum Flow Problem has to do with the computation of the maximum value of the flow across a given flow network
 
-```
-A DOCUMENTATION text file (written in Word, Latex, Mark-down, etc.) including a
-short “designer manual”, i.e., a document including:
-o All main design choices (how the reading part has been performed, how the data
-structure has been organized, how the parallelism has been designed, etc.)
-o The experimental evaluation of the tools, i.e., tables or graphics reporting a
-reasonable set of experimental results. The experimental evidence should include
-a comparison (in terms of memory and of elapsed time) between the original
-sequential version of the tool and the 2-3 parallel versions with different
-parallelization levels (i.e., with 1, 2, 4, 8, etc., threads) and different size of the
-input graph (up to millions of nodes).
-o Experiments should be run on synthetically generated graphs and on flow
-networks benchmarks usually publicly available from the WWW.
-```
+## Commands
 
-- input files with datasets (test datasets): .......
-table with file name - # nodes - # edges - max flow value
-To RUN
-A README text file (written in plain ASCII) including a short “user manual”, i.e., a
-document describing how to compile and run the program, under which system, which
-API, etc.
-SEQ
-cmds for SEQ
-PAR
-cmds for PAR
+Run the following commands in a Linux environment to compile and run the program from the root directory:
+
+- To compile sequential version: 
+`./scripts/run_FF_seq.sh [input file] [output file]`  
+Example: `./scripts/run_FF_seq.sh airports_500_dag.txt output.txt`
+- To run sequential version:
+`./src/MaxFlowSolver ./input/[input file] ./output/[output file]`  
+Example: `./src/MaxFlowSolver ./inputs/dag_1000_6000.txt ./output/output.txt`  
+
+- To compile parallel version: 
+`./scripts/run_FF_par.sh`  
+- To run parallel version:
+`./src/MaxFlowSolverPP ./input/[input file] ./output/[output file]`  
+Example: `./src/MaxFlowSolverPP ./inputs/dag_1000_6000.txt ./output/output.txt`
 
 ## Graph Datasets for Testing
 
@@ -55,23 +46,6 @@ cmds for PAR
 |critical             | 4            | 5              | 2000000000 (2G)   |
 
 See at the end of this file for the results of tests run on these datasets.
-
-## Commands
-
-Run the following commands in a Linux environment to compile and run the program from the root directory:
-
-- To compile sequential version: 
-`./scripts/run_FF_seq.sh [input file] [output file]`  
-Example: `./scripts/run_FF_seq.sh airports_500_dag.txt output.txt`
-- To run sequential version:
-`./src/MaxFlowSolver ./input/[input file] ./output/[output file]`  
-Example: `./src/MaxFlowSolver ./inputs/dag_1000_6000.txt ./output/output.txt`  
-
-- To compile parallel version: 
-`./scripts/run_FF_par.sh`  
-- To run parallel version:
-`./src/MaxFlowSolverPP ./input/[input file] ./output/[output file]`  
-Example: `./src/MaxFlowSolverPP ./inputs/dag_1000_6000.txt ./output/output.txt`
 
 ## Ford-Fulkerson - SEQUENTIAL Version
 
@@ -338,7 +312,6 @@ The `Node` class represents a node in a graph, with attributes such as an ID, a 
 
 The `Edge` class used in the parallel version of the Max Flow algorithm is the same class used for the sequential version. See above for further details.
 
-
 ## Tests Results and Performance Analysis
 
 ### Results
@@ -377,5 +350,3 @@ The tests were run on a machine with the following specifications:
 The plot above represents the time required to run each file of the dataset. Each file is identified by the degree of the graph, i.e. the ratio between the number of its edges and the number of its nodes, which is represented on the x axis. The y axis represents a logarithmic scale of time in microseconds. We ran each of the files in the dataset with 4 different configurations: sequential Ford-Fulkerson and parallel Ford-Fulkerson with 8, 4, and 2 threads. The obtained results are represented by four lines in the same graph, in order to see how the run time changes with respect to each configuration, while keeping the same files. The graph shows that in reality the results obtained do not express well what was expected from the theory: the sequential configuration was supposed to always be slower than any parallel configuration, but instead, up until a degree of ~12, it is actually the fastest. Similarly, regarding the parallel configurations it was expected for the runtime to decrease as the number of threads increases. However, again up until a degree of ~12, we obtained the opposite result. With higher degrees of the graph, unexpectedly, there is not a significant difference in runtime among the different parallel configurations.
 However, we noticed that the runtime of all configurations generally tends to increase as the degree of the graph increases, as expected.
 Finally, it appears that the maximum flow of each file, which is written above each corresponding point in the graph, does not influence the obtained runtime.
-
-
