@@ -48,7 +48,7 @@ $PROG $PARENT_DIR/inputs/input3.txt $PARENT_DIR/outputs/output.txt
 echo "Graph saved to $PARENT_DIR/outputs/output.txt"
 
 # Create graph with Graphviz
-g++ $PARENT_DIR/viz/graphViz.cpp -o $PARENT_DIR/viz/graphviz  -lgvc -lcgraph
+g++ $PARENT_DIR/viz/graphViz.cpp -o $PARENT_DIR/viz/graphviz  -lgvc -lcgraph -w
 
 
 # Run Graphviz using result file of the solver
