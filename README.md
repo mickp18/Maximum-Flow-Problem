@@ -371,4 +371,11 @@ The tests were run on a machine with the following specifications:
 - OS: Ubuntu (WSL 2 on Windows 11)  
 
 ### Performance Analysis
-....
+
+![Runtime of the datasets with respect to the degree of each graph](/degree.png "Runtime of the datasets with respect to the degree of each graph")
+
+The plot above represents the time required to run each file of the dataset. Each file is identified by the degree of the graph, i.e. the ratio between the number of its edges and the number of its nodes, which is represented on the x axis. The y axis represents a logarithmic scale of time in microseconds. We ran each of the files in the dataset with 4 different configurations: sequential Ford-Fulkerson and parallel Ford-Fulkerson with 8, 4, and 2 threads. The obtained results are represented by four lines in the same graph, in order to see how the run time changes with respect to each configuration, while keeping the same files. The graph shows that in reality the results obtained do not express well what was expected from the theory: the sequential configuration was supposed to always be slower than any parallel configuration, but instead, up until a degree of ~12, it is actually the fastest. Similarly, regarding the parallel configurations it was expected for the runtime to decrease as the number of threads increases. However, again up until a degree of ~12, we obtained the opposite result. With higher degrees of the graph, unexpectedly, there is not a significant difference in runtime among the different parallel configurations.
+However, we noticed that the runtime of all configurations generally tends to increase as the degree of the graph increases, as expected.
+Finally, it appears that the maximum flow of each file, which is written above each corresponding point in the graph, does not influence the obtained runtime.
+
+
