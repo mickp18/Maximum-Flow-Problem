@@ -1,2 +1,0 @@
-ThreadSanitizer: reading suppressions file at /home/michele/sdp/project/Maximum-Flow-Problem/src/my_suppressions.txt
-ThreadSanitizer: failed to read suppressions file '/home/michele/sdp/project/Maximum-Flow-Problem/src/my_suppressions.txt'

@@ -17,18 +17,18 @@ g++ $MAIN $SOLVER $EDGE -o $PROG
 
 
 # Run the solver
-$PROG $PARENT_DIR/inputs/$1 $PARENT_DIR/outputs/$2
-echo "Graph saved to $PARENT_DIR/outputs/$2"
+$PROG $PARENT_DIR/inputs/input3.txt $PARENT_DIR/outputs/output.txt
+echo "Graph saved to $PARENT_DIR/outputs/output.txt"
 
 
 # Create graph with Graphviz
-#g++ $PARENT_DIR/viz/graphViz.cpp -o $PARENT_DIR/viz/graphviz  -lgvc -lcgraph
+g++ $PARENT_DIR/viz/graphViz.cpp -o $PARENT_DIR/viz/graphviz  -lgvc -lcgraph
 
 
 # Run Graphviz using result file of the solver
-#$PARENT_DIR/viz/graphviz $PARENT_DIR/outputs/$2
+$PARENT_DIR/viz/graphviz $PARENT_DIR/outputs/output.txt
 
 
 
-# xdg-open graph.png
+#xdg-open graph.png
 #...

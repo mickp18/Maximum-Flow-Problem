@@ -33,7 +33,7 @@ g++  $MAIN $SOLVER $NODE $EDGE $LOG $MON -o  $PROG -g
 # $PROG $PARENT_DIR/inputs/first_test.txt $PARENT_DIR/outputs/second_test.txt
 #---------
 ### run max flow solver parallel with THREAD POOL
-$PROG $PARENT_DIR/inputs/second_test.txt $PARENT_DIR/outputs/second_test.txt
+$PROG $PARENT_DIR/inputs/input3.txt $PARENT_DIR/outputs/output.txt
 ###
 #---------
 ### run max flow solver parallel with MANY THREADS
@@ -44,3 +44,12 @@ $PROG $PARENT_DIR/inputs/second_test.txt $PARENT_DIR/outputs/second_test.txt
 # $PROG $PARENT_DIR/inputs/input_baby.txt $PARENT_DIR/outputs/second_test.txt
 # compile sequetial version
 # g++ main.cpp Edge.hpp MaxFlowSolver.hpp -o sequentialSolver
+
+echo "Graph saved to $PARENT_DIR/outputs/output.txt"
+
+# Create graph with Graphviz
+g++ $PARENT_DIR/viz/graphViz.cpp -o $PARENT_DIR/viz/graphviz  -lgvc -lcgraph
+
+
+# Run Graphviz using result file of the solver
+$PARENT_DIR/viz/graphviz $PARENT_DIR/outputs/output.txt
