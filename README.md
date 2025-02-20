@@ -13,16 +13,17 @@ Run the following commands in a Linux environment to compile and run the program
 
 If not already present, to install graphviz you need to run the following commands:  
 ```bash
-sudo apt install grapviz  
+sudo apt install grapviz
 ```
 In case of error related to the library graphviz/gvc.h, run the following commands:  
 ```bash
-sudo apt-get update  
-sudo apt-get install graphviz-dev  
+sudo apt-get update
+sudo apt-get install graphviz-dev
 ```  
 
 - To compile and run sequential version (using as default dataset "input3.txt"):   
 ```bash
+chmod +x ./scripts/run_FF_seq.sh
 ./scripts/run_FF_seq.sh
 ```  
 - To run sequential version (after running script):  
@@ -36,6 +37,7 @@ Example:
 
 - To compile and run parallel version (using as default dataset "input3.txt"):  
 ```bash
+chmod +x ./scripts/run_FF_par.sh
 ./scripts/run_FF_par.sh
 ```  
 - To run parallel version (after running script):  
