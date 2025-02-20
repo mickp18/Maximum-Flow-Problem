@@ -11,16 +11,15 @@ Among all possible flows that could pass across a given flow network, there exis
 
 Run the following commands in a Linux environment to compile and run the program from the root directory:
 
-- To compile and run sequential version (using as default dataset "input3.txt"): 
+- To compile and run sequential version (using as default dataset "input3.txt"):   
 `./scripts/run_FF_seq.sh`  
-Example: `./scripts/run_FF_seq.sh`
-- To run sequential version (after running script):
+- To run sequential version (after running script):  
 `./src/MaxFlowSolver ./input/[input file] ./outputs/[output file]`  
 Example: `./src/MaxFlowSolver ./inputs/dag_1000_6000.txt ./outputs/output.txt`  
 
-- To compile and run parallel version (using as default dataset "input3.txt"): 
+- To compile and run parallel version (using as default dataset "input3.txt"):  
 `./scripts/run_FF_par.sh`  
-- To run parallel version (after running script):
+- To run parallel version (after running script):  
 `./src/MaxFlowSolverPP ./input/[input file] ./outputs/[output file]`  
 Example: `./src/MaxFlowSolverPP ./inputs/dag_1000_6000.txt ./outputs/output.txt`
 
